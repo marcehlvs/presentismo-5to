@@ -34,6 +34,20 @@ export const DESAFIOS = [
   { enunciado: '¿Cuánto es (−4)² + 3·(−5) + 20 ÷ 4?', respuesta: 6, pista: 'Respetá la jerarquía de operaciones.' },
 ];
 
+// Desafío que corresponde a una fecha 'AAAA-MM-DD' (fin de semana usa el del lunes)
+export function desafioDeFecha(iso) {
+  const [y, m, d] = iso.split('-').map(Number);
+  const dow = new Date(y, m - 1, d).getDay();
+  return DESAFIOS[dow >= 1 && dow <= 5 ? dow - 1 : 0];
+}
+
+const DIAS_SEMANA = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+
+// Jefe de Planta que le toca al día indicado (null en fin de semana)
+export function jefeDelDia(fecha = new Date()) {
+  return ALUMNOS.find((a) => a.dia === DIAS_SEMANA[fecha.getDay()]) ?? null;
+}
+
 export function getJornada() {
   const hoy = new Date();
   const dia = hoy.toLocaleDateString('es-AR', { weekday: 'long' });

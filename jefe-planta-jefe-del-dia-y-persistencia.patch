@@ -1,0 +1,140 @@
+diff --git a/src/components/Login.jsx b/src/components/Login.jsx
+index 3bd06b7..0e675ff 100644
+--- a/src/components/Login.jsx
++++ b/src/components/Login.jsx
+@@ -3,8 +3,8 @@ import { Factory, HardHat } from 'lucide-react';
+ import { usePlant } from '../context/PlantContext';
+ 
+ export default function Login() {
+-  const { alumnos, iniciarTurno } = usePlant();
+-  const [id, setId] = useState('');
++  const { alumnos, iniciarTurno, jefeSugerido } = usePlant();
++  const [id, setId] = useState(jefeSugerido ? String(jefeSugerido.id) : '');
+ 
+   const handleSubmit = (e) => {
+     e.preventDefault();
+@@ -36,6 +36,9 @@ export default function Login() {
+                 <option key={a.id} value={a.id}>{a.dia} · {a.nombre}</option>
+               ))}
+             </select>
++            {jefeSugerido && (
++              <p className="text-sm text-acero/70">Hoy le toca a {jefeSugerido.nombre}.</p>
++            )}
+           </div>
+ 
+           <button
+diff --git a/src/context/PlantContext.jsx b/src/context/PlantContext.jsx
+index b6ab7eb..a0b3bdb 100644
+--- a/src/context/PlantContext.jsx
++++ b/src/context/PlantContext.jsx
+@@ -1,17 +1,62 @@
+ import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+-import { ALUMNOS, TURNOS, TAREAS, PUNTAJES_INICIALES, getJornada } from '../data/mockData';
++import { ALUMNOS, TURNOS, TAREAS, PUNTAJES_INICIALES, getJornada, jefeDelDia } from '../data/mockData';
+ 
+ const PlantContext = createContext(null);
+ 
+ const PUNTOS_CHECKLIST = 10;
+ const PUNTOS_DESAFIO = 15;
+ 
++const STORAGE_KEY = 'jefe-de-planta:v1';
++
++const hoyISO = () => {
++  const d = new Date();
++  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
++};
++
++// Puntajes: se guardan siempre. Progreso del día (jefe, checklist, desafío): solo vale para la fecha de hoy.
++function cargarInicial() {
++  const fecha = hoyISO();
++  let guardado = {};
++  try {
++    const raw = JSON.parse(localStorage.getItem(STORAGE_KEY));
++    if (raw && typeof raw === 'object') guardado = raw;
++  } catch { /* sin almacenamiento o dato corrupto */ }
++
++  const puntajes = { ...PUNTAJES_INICIALES };
++  for (const t of TURNOS) {
++    if (Number.isFinite(guardado.puntajes?.[t.id])) puntajes[t.id] = guardado.puntajes[t.id];
++  }
++  const dia = guardado.fecha === fecha && guardado.dia && typeof guardado.dia === 'object' ? guardado.dia : {};
++  return {
++    fecha,
++    puntajes,
++    jefeId: ALUMNOS.some((a) => a.id === dia.jefeId) ? dia.jefeId : null,
++    hechas: dia.hechas && typeof dia.hechas === 'object' ? dia.hechas : {},
++    desafioResuelto: dia.desafioResuelto === true,
++    premioChecklist: dia.premioChecklist === true,
++  };
++}
++
+ export function PlantProvider({ children }) {
+-  const [jefeId, setJefeId] = useState(null);
+-  const [hechas, setHechas] = useState({});
+-  const [desafioResuelto, setDesafioResuelto] = useState(false);
+-  const [premioChecklist, setPremioChecklist] = useState(false);
+-  const [puntajes, setPuntajes] = useState(PUNTAJES_INICIALES);
++  const [inicial] = useState(cargarInicial);
++  const [jefeId, setJefeId] = useState(inicial.jefeId);
++  const [hechas, setHechas] = useState(inicial.hechas);
++  const [desafioResuelto, setDesafioResuelto] = useState(inicial.desafioResuelto);
++  const [premioChecklist, setPremioChecklist] = useState(inicial.premioChecklist);
++  const [puntajes, setPuntajes] = useState(inicial.puntajes);
++
++  useEffect(() => {
++    try {
++      localStorage.setItem(
++        STORAGE_KEY,
++        JSON.stringify({
++          fecha: inicial.fecha,
++          puntajes,
++          dia: { jefeId, hechas, desafioResuelto, premioChecklist },
++        })
++      );
++    } catch { /* sin almacenamiento */ }
++  }, [inicial.fecha, puntajes, jefeId, hechas, desafioResuelto, premioChecklist]);
+ 
+   const jornada = useMemo(getJornada, []);
+   const jefe = ALUMNOS.find((a) => a.id === jefeId) ?? null;
+@@ -31,12 +76,8 @@ export function PlantProvider({ children }) {
+ 
+   const iniciarTurno = (id) => setJefeId(id);
+ 
+-  const cerrarTurno = () => {
+-    setJefeId(null);
+-    setHechas({});
+-    setDesafioResuelto(false);
+-    setPremioChecklist(false);
+-  };
++  // Solo cierra la sesión: el progreso del día se conserva, así no se puede cobrar el premio dos veces.
++  const cerrarTurno = () => setJefeId(null);
+ 
+   const toggleTarea = (id) => setHechas((h) => ({ ...h, [id]: !h[id] }));
+ 
+@@ -57,7 +98,7 @@ export function PlantProvider({ children }) {
+   );
+ 
+   const value = {
+-    alumnos: ALUMNOS, tareas: TAREAS, jornada, jefe, hechas, plantaOperativa,
++    alumnos: ALUMNOS, tareas: TAREAS, jornada, jefe, jefeSugerido: jefeDelDia(), hechas, plantaOperativa,
+     desafioResuelto, ranking, puntosDesafio: PUNTOS_DESAFIO, puntosChecklist: PUNTOS_CHECKLIST,
+     iniciarTurno, cerrarTurno, toggleTarea, verificarDesafio,
+   };
+diff --git a/src/data/mockData.js b/src/data/mockData.js
+index f27c0ff..657f44f 100644
+--- a/src/data/mockData.js
++++ b/src/data/mockData.js
+@@ -34,6 +34,13 @@ export const DESAFIOS = [
+   { enunciado: '¿Cuánto es (−4)² + 3·(−5) + 20 ÷ 4?', respuesta: 6, pista: 'Respetá la jerarquía de operaciones.' },
+ ];
+ 
++const DIAS_SEMANA = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
++
++// Jefe de Planta que le toca al día indicado (null en fin de semana)
++export function jefeDelDia(fecha = new Date()) {
++  return ALUMNOS.find((a) => a.dia === DIAS_SEMANA[fecha.getDay()]) ?? null;
++}
++
+ export function getJornada() {
+   const hoy = new Date();
+   const dia = hoy.toLocaleDateString('es-AR', { weekday: 'long' });

@@ -4,14 +4,14 @@ import { usePlant } from '../context/PlantContext';
 const ICONOS = { Timer, Wind, PackageCheck, Presentation };
 
 export default function MorningChecklist() {
-  const { tareas, hechas, toggleTarea, plantaOperativa, puntosChecklist } = usePlant();
-  const completadas = tareas.filter((t) => hechas[t.id]).length;
+  const { tareas, hechas, aprobadas, toggleTarea, plantaOperativa, puntosChecklist } = usePlant();
+  const completadas = tareas.filter((t) => aprobadas[t.id]).length;
 
   return (
     <section aria-labelledby="titulo-checklist" className="bg-white border-2 border-acero rounded-lg p-5">
       <div className="flex items-baseline justify-between mb-4">
         <h2 id="titulo-checklist" className="font-display text-3xl font-bold">Checklist matutino</h2>
-        <span className="font-medium tabular-nums">{completadas} de {tareas.length}</span>
+        <span className="font-medium tabular-nums">{completadas} de {tareas.length} aprobadas</span>
       </div>
 
       <div
@@ -31,11 +31,12 @@ export default function MorningChecklist() {
         {tareas.map((t) => {
           const Icono = ICONOS[t.icono];
           const hecha = !!hechas[t.id];
+          const aprobada = !!aprobadas[t.id];
           return (
             <li key={t.id}>
               <label
                 className={`flex items-center gap-3 p-3 rounded-md border-2 cursor-pointer transition has-[:focus-visible]:ring-4 has-[:focus-visible]:ring-seguridad/60 ${
-                  hecha ? 'border-operativa bg-operativa/10' : 'border-acero/20 hover:border-acero'
+                  aprobada ? 'border-operativa bg-operativa/10' : hecha ? 'border-seguridad bg-seguridad/10' : 'border-acero/20 hover:border-acero'
                 }`}
               >
                 <input
@@ -46,16 +47,21 @@ export default function MorningChecklist() {
                 />
                 <span
                   className={`size-7 shrink-0 rounded-md border-2 flex items-center justify-center ${
-                    hecha ? 'bg-operativa border-operativa text-white' : 'border-acero bg-white'
+                    aprobada ? 'bg-operativa border-operativa text-white' : hecha ? 'bg-seguridad border-seguridad text-acero' : 'border-acero bg-white'
                   }`}
                   aria-hidden="true"
                 >
-                  {hecha && <CircleCheck className="size-5" />}
+                  {(hecha || aprobada) && <CircleCheck className="size-5" />}
                 </span>
                 <Icono className="size-6 shrink-0" aria-hidden="true" />
                 <span className="min-w-0">
-                  <span className={`block font-semibold ${hecha ? 'line-through decoration-2' : ''}`}>{t.titulo}</span>
+                  <span className={`block font-semibold ${aprobada ? 'line-through decoration-2' : ''}`}>{t.titulo}</span>
                   <span className="block text-sm text-acero/70">{t.detalle}</span>
+                  {(hecha || aprobada) && (
+                    <span className="block text-sm font-medium">
+                      {aprobada ? 'Aprobada por el docente' : 'Esperando aprobación del docente'}
+                    </span>
+                  )}
                 </span>
               </label>
             </li>
@@ -71,7 +77,7 @@ export default function MorningChecklist() {
           <Cog className="anim-giro size-10 shrink-0" aria-hidden="true" />
           <div>
             <p className="font-display text-2xl font-bold leading-tight">¡Planta operativa!</p>
-            <p className="text-sm">Checklist completo. Tu turno suma {puntosChecklist} puntos.</p>
+            <p className="text-sm">Checklist aprobado. Tu turno suma {puntosChecklist} puntos.</p>
           </div>
         </div>
       )}

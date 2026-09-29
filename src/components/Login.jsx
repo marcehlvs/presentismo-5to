@@ -3,8 +3,8 @@ import { Factory, HardHat } from 'lucide-react';
 import { usePlant } from '../context/PlantContext';
 
 export default function Login() {
-  const { alumnos, iniciarTurno } = usePlant();
-  const [id, setId] = useState('');
+  const { alumnos, iniciarTurno, jefeSugerido } = usePlant();
+  const [id, setId] = useState(jefeSugerido ? String(jefeSugerido.id) : '');
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -36,6 +36,9 @@ export default function Login() {
                 <option key={a.id} value={a.id}>{a.dia} · {a.nombre}</option>
               ))}
             </select>
+            {jefeSugerido && (
+              <p className="text-sm text-acero/70">Hoy le toca a {jefeSugerido.nombre}.</p>
+            )}
           </div>
 
           <button

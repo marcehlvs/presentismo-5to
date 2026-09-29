@@ -1,0 +1,758 @@
+diff --git a/.env.example b/.env.example
+new file mode 100644
+index 0000000..197c3fa
+--- /dev/null
++++ b/.env.example
+@@ -0,0 +1,8 @@
++VITE_FIREBASE_API_KEY=
++VITE_FIREBASE_AUTH_DOMAIN=
++VITE_FIREBASE_PROJECT_ID=
++VITE_FIREBASE_STORAGE_BUCKET=
++VITE_FIREBASE_MESSAGING_SENDER_ID=
++VITE_FIREBASE_APP_ID=
++# Clave de sitio reCAPTCHA v3 (App Check)
++VITE_RECAPTCHA_SITE_KEY=
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..166950a
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1,5 @@
++
++.env
++.env.*
++!.env.example
++.firebase
+diff --git a/README.md b/README.md
+index 0fd9bde..bf1821b 100644
+--- a/README.md
++++ b/README.md
+@@ -5,3 +5,14 @@ npm install
+ npm run dev
+ ```
+ React 18 + Vite + Tailwind CSS v4 + Lucide React. Datos mockeados en `src/data/mockData.js`, estado global en `src/context/PlantContext.jsx`.
++
++## Firebase (puntos compartidos y aprobación docente)
++1. Creá el proyecto y la base Firestore (modo producción). Copiá `.env.example` a `.env` y completá los datos de la app web.
++2. Authentication: activá los proveedores **Anónimo** y **Correo/contraseña**.
++3. Creá tu usuario docente (Authentication > Users > Add user) y copiá su UID.
++4. Firestore: creá la colección `docentes` con un documento cuyo ID sea ese UID (un campo cualquiera, por ejemplo `activo: true`).
++5. Publicá las reglas: `firebase deploy --only firestore:rules`.
++6. App Check (reCAPTCHA v3): registrá la app, pegá la clave en `VITE_RECAPTCHA_SITE_KEY` y activá "Enforce" al final.
++7. `npm run build && firebase deploy --only hosting`.
++
++Los alumnos solo declaran tareas y envían respuestas; los puntos los suma el docente al aprobar.
+diff --git a/firebase.json b/firebase.json
+new file mode 100644
+index 0000000..c71bbf3
+--- /dev/null
++++ b/firebase.json
+@@ -0,0 +1,18 @@
++{
++  "firestore": { "rules": "firestore.rules" },
++  "hosting": {
++    "public": "dist",
++    "rewrites": [{ "source": "**", "destination": "/index.html" }],
++    "headers": [
++      {
++        "source": "**",
++        "headers": [
++          { "key": "Content-Security-Policy", "value": "default-src 'self'; script-src 'self' https://www.google.com/recaptcha/ https://www.gstatic.com/recaptcha/ https://apis.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://www.google.com; frame-src https://www.google.com/recaptcha/ https://recaptcha.google.com https://*.firebaseapp.com; object-src 'none'; base-uri 'self'; frame-ancestors 'none'" },
++          { "key": "X-Content-Type-Options", "value": "nosniff" },
++          { "key": "Referrer-Policy", "value": "no-referrer" },
++          { "key": "X-Frame-Options", "value": "DENY" }
++        ]
++      }
++    ]
++  }
++}
+diff --git a/firestore.rules b/firestore.rules
+new file mode 100644
+index 0000000..ec6a34e
+--- /dev/null
++++ b/firestore.rules
+@@ -0,0 +1,59 @@
++rules_version = '2';
++service cloud.firestore {
++  match /databases/{database}/documents {
++
++    function signedIn() { return request.auth != null; }
++
++    // Docente: cuenta con email (no anónima) cuyo uid figura en /docentes (se crea a mano en la consola)
++    function esDocente() {
++      return signedIn()
++        && request.auth.token.firebase.sign_in_provider != 'anonymous'
++        && exists(/databases/$(database)/documents/docentes/$(request.auth.uid));
++    }
++
++    // Lo que puede escribir un alumno: solo tareas declaradas y su respuesta
++    function datosAlumnoValidos() {
++      let d = request.resource.data;
++      return (!('declaradas' in d)
++              || (d.declaradas is map
++                  && d.declaradas.keys().hasOnly(['fichaje', 'ventilacion', 'insumos', 'desafio'])
++                  && d.declaradas.values().hasOnly([true, false])))
++          && (!('respuesta' in d) || (d.respuesta is string && d.respuesta.size() <= 20));
++    }
++
++    match /docentes/{uid} {
++      allow read: if signedIn() && request.auth.uid == uid;
++      allow write: if false;
++    }
++
++    match /turnos/{turnoId} {
++      allow read: if signedIn();
++      allow write: if esDocente();   // los alumnos nunca escriben puntos
++    }
++
++    match /jornadas/{docId} {
++      allow read: if signedIn();
++
++      allow create: if signedIn()
++        && request.resource.data.keys().hasOnly(['fecha', 'jefeId', 'declaradas', 'respuesta'])
++        && request.resource.data.keys().hasAll(['fecha', 'jefeId'])
++        && request.resource.data.fecha is string
++        && request.resource.data.fecha.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
++        && request.resource.data.jefeId is int
++        && request.resource.data.jefeId >= 1 && request.resource.data.jefeId <= 5
++        && docId == request.resource.data.fecha + '_' + string(request.resource.data.jefeId)
++        && datosAlumnoValidos();
++
++      allow update: if signedIn()
++        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['declaradas', 'respuesta'])
++        && datosAlumnoValidos()
++        // una vez aprobado el desafío, la respuesta ya no se puede cambiar
++        && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['respuesta'])
++            || resource.data.get('desafioAprobado', false) == false);
++
++      allow create, update, delete: if esDocente();
++    }
++
++    match /{document=**} { allow read, write: if false; }
++  }
++}
+diff --git a/package.json b/package.json
+index 9936019..12e0712 100644
+--- a/package.json
++++ b/package.json
+@@ -9,6 +9,7 @@
+     "preview": "vite preview"
+   },
+   "dependencies": {
++    "firebase": "^11.0.0",
+     "lucide-react": "^0.462.0",
+     "react": "^18.3.1",
+     "react-dom": "^18.3.1"
+diff --git a/src/App.jsx b/src/App.jsx
+index 57534ea..bbf777c 100644
+--- a/src/App.jsx
++++ b/src/App.jsx
+@@ -1,10 +1,33 @@
+ import { PlantProvider, usePlant } from './context/PlantContext';
+ import Login from './components/Login';
+ import Dashboard from './components/Dashboard';
++import PanelDocente from './components/PanelDocente';
++import AccesoDocente from './components/AccesoDocente';
++
++function Aviso({ children }) {
++  return <p className="p-8 text-lg font-semibold">{children}</p>;
++}
+ 
+ function Pantalla() {
+-  const { jefe } = usePlant();
+-  return jefe ? <Dashboard /> : <Login />;
++  const { jefe, authListo, esDocente, cuentaSinPermiso, logoutDocente, error } = usePlant();
++
++  if (!authListo) return <Aviso>{error || 'Conectando con la planta…'}</Aviso>;
++  if (esDocente) return <PanelDocente />;
++  if (cuentaSinPermiso) {
++    return (
++      <Aviso>
++        Esta cuenta no tiene permisos de docente.{' '}
++        <button onClick={logoutDocente} className="underline">Cerrar sesión</button>
++      </Aviso>
++    );
++  }
++  if (jefe) return <Dashboard />;
++  return (
++    <>
++      <Login />
++      <AccesoDocente />
++    </>
++  );
+ }
+ 
+ export default function App() {
+diff --git a/src/components/AccesoDocente.jsx b/src/components/AccesoDocente.jsx
+new file mode 100644
+index 0000000..d276fb5
+--- /dev/null
++++ b/src/components/AccesoDocente.jsx
+@@ -0,0 +1,48 @@
++import { useState } from 'react';
++import { usePlant } from '../context/PlantContext';
++
++export default function AccesoDocente() {
++  const { loginDocente } = usePlant();
++  const [abierto, setAbierto] = useState(false);
++  const [email, setEmail] = useState('');
++  const [clave, setClave] = useState('');
++  const [error, setError] = useState('');
++  const [cargando, setCargando] = useState(false);
++
++  const entrar = async (e) => {
++    e.preventDefault();
++    setCargando(true);
++    setError('');
++    try {
++      await loginDocente(email.trim(), clave);
++    } catch {
++      setError('Email o contraseña incorrectos.');
++      setCargando(false);
++    }
++  };
++
++  const campo = 'w-full border-2 border-acero rounded-md px-3 py-2 focus:outline-none focus:ring-4 focus:ring-seguridad/60';
++
++  return (
++    <div className="fixed bottom-4 inset-x-0 flex justify-center px-4">
++      {!abierto ? (
++        <button onClick={() => setAbierto(true)} className="text-sm underline text-acero/70 hover:text-acero">
++          Acceso docente
++        </button>
++      ) : (
++        <form onSubmit={entrar} className="w-full max-w-sm bg-white border-2 border-acero rounded-lg p-4 space-y-3 shadow-[6px_6px_0_0_var(--color-acero)]">
++          <p className="font-display text-2xl font-bold">Acceso docente</p>
++          <input type="email" required autoComplete="username" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} className={campo} />
++          <input type="password" required autoComplete="current-password" placeholder="Contraseña" value={clave} onChange={(e) => setClave(e.target.value)} className={campo} />
++          {error && <p role="alert" className="text-alarma font-semibold text-sm">{error}</p>}
++          <div className="flex gap-2">
++            <button disabled={cargando} className="flex-1 bg-acero text-seguridad font-display text-xl font-bold py-2 rounded-md disabled:opacity-50">
++              {cargando ? 'Entrando…' : 'Entrar'}
++            </button>
++            <button type="button" onClick={() => setAbierto(false)} className="px-3 rounded-md border-2 border-acero">Cancelar</button>
++          </div>
++        </form>
++      )}
++    </div>
++  );
++}
+diff --git a/src/components/MorningChecklist.jsx b/src/components/MorningChecklist.jsx
+index 094cdda..b8e7630 100644
+--- a/src/components/MorningChecklist.jsx
++++ b/src/components/MorningChecklist.jsx
+@@ -4,14 +4,14 @@ import { usePlant } from '../context/PlantContext';
+ const ICONOS = { Timer, Wind, PackageCheck, Presentation };
+ 
+ export default function MorningChecklist() {
+-  const { tareas, hechas, toggleTarea, plantaOperativa, puntosChecklist } = usePlant();
+-  const completadas = tareas.filter((t) => hechas[t.id]).length;
++  const { tareas, hechas, aprobadas, toggleTarea, plantaOperativa, puntosChecklist } = usePlant();
++  const completadas = tareas.filter((t) => aprobadas[t.id]).length;
+ 
+   return (
+     <section aria-labelledby="titulo-checklist" className="bg-white border-2 border-acero rounded-lg p-5">
+       <div className="flex items-baseline justify-between mb-4">
+         <h2 id="titulo-checklist" className="font-display text-3xl font-bold">Checklist matutino</h2>
+-        <span className="font-medium tabular-nums">{completadas} de {tareas.length}</span>
++        <span className="font-medium tabular-nums">{completadas} de {tareas.length} aprobadas</span>
+       </div>
+ 
+       <div
+@@ -31,11 +31,12 @@ export default function MorningChecklist() {
+         {tareas.map((t) => {
+           const Icono = ICONOS[t.icono];
+           const hecha = !!hechas[t.id];
++          const aprobada = !!aprobadas[t.id];
+           return (
+             <li key={t.id}>
+               <label
+                 className={`flex items-center gap-3 p-3 rounded-md border-2 cursor-pointer transition has-[:focus-visible]:ring-4 has-[:focus-visible]:ring-seguridad/60 ${
+-                  hecha ? 'border-operativa bg-operativa/10' : 'border-acero/20 hover:border-acero'
++                  aprobada ? 'border-operativa bg-operativa/10' : hecha ? 'border-seguridad bg-seguridad/10' : 'border-acero/20 hover:border-acero'
+                 }`}
+               >
+                 <input
+@@ -46,16 +47,21 @@ export default function MorningChecklist() {
+                 />
+                 <span
+                   className={`size-7 shrink-0 rounded-md border-2 flex items-center justify-center ${
+-                    hecha ? 'bg-operativa border-operativa text-white' : 'border-acero bg-white'
++                    aprobada ? 'bg-operativa border-operativa text-white' : hecha ? 'bg-seguridad border-seguridad text-acero' : 'border-acero bg-white'
+                   }`}
+                   aria-hidden="true"
+                 >
+-                  {hecha && <CircleCheck className="size-5" />}
++                  {(hecha || aprobada) && <CircleCheck className="size-5" />}
+                 </span>
+                 <Icono className="size-6 shrink-0" aria-hidden="true" />
+                 <span className="min-w-0">
+-                  <span className={`block font-semibold ${hecha ? 'line-through decoration-2' : ''}`}>{t.titulo}</span>
++                  <span className={`block font-semibold ${aprobada ? 'line-through decoration-2' : ''}`}>{t.titulo}</span>
+                   <span className="block text-sm text-acero/70">{t.detalle}</span>
++                  {(hecha || aprobada) && (
++                    <span className="block text-sm font-medium">
++                      {aprobada ? 'Aprobada por el docente' : 'Esperando aprobación del docente'}
++                    </span>
++                  )}
+                 </span>
+               </label>
+             </li>
+@@ -71,7 +77,7 @@ export default function MorningChecklist() {
+           <Cog className="anim-giro size-10 shrink-0" aria-hidden="true" />
+           <div>
+             <p className="font-display text-2xl font-bold leading-tight">¡Planta operativa!</p>
+-            <p className="text-sm">Checklist completo. Tu turno suma {puntosChecklist} puntos.</p>
++            <p className="text-sm">Checklist aprobado. Tu turno suma {puntosChecklist} puntos.</p>
+           </div>
+         </div>
+       )}
+diff --git a/src/components/PanelDocente.jsx b/src/components/PanelDocente.jsx
+new file mode 100644
+index 0000000..193aa95
+--- /dev/null
++++ b/src/components/PanelDocente.jsx
+@@ -0,0 +1,80 @@
++import { usePlant } from '../context/PlantContext';
++import { desafioDeFecha } from '../data/mockData';
++import Leaderboard from './Leaderboard';
++
++const btn = 'px-3 py-1.5 rounded-md border-2 border-acero font-semibold text-sm';
++
++export default function PanelDocente() {
++  const { jornadasHoy, alumnos, tareas, aprobarTarea, aprobarDesafio, rechazarDesafio, logoutDocente, jornada, error } = usePlant();
++
++  return (
++    <div className="min-h-screen">
++      <header className="bg-acero text-white">
++        <div className="franja-peligro h-3" />
++        <div className="max-w-6xl mx-auto px-4 py-5 flex items-center justify-between gap-4">
++          <div>
++            <p className="font-display text-3xl font-bold leading-none">Panel docente</p>
++            <p className="text-white/75 mt-1">{jornada.diaNombre}</p>
++          </div>
++          <button onClick={logoutDocente} className="px-3 py-2 rounded-md border border-white/40 hover:bg-white/10">Cerrar sesión</button>
++        </div>
++      </header>
++
++      <main className="max-w-6xl mx-auto px-4 py-6 grid gap-6 lg:grid-cols-[1fr_360px] items-start">
++        <div className="space-y-6">
++          {error && <p role="alert" className="text-alarma font-semibold">{error}</p>}
++          {jornadasHoy.length === 0 && (
++            <p className="bg-white border-2 border-acero rounded-lg p-5">Todavía no hay actividad de Jefes de Planta hoy.</p>
++          )}
++          {jornadasHoy.map((j) => {
++            const alumno = alumnos.find((a) => a.id === j.jefeId);
++            const desafio = desafioDeFecha(j.fecha);
++            const ap = j.aprobadas ?? {};
++            const dec = j.declaradas ?? {};
++            return (
++              <section key={j.id} className="bg-white border-2 border-acero rounded-lg p-5">
++                <h2 className="font-display text-3xl font-bold mb-3">{alumno?.nombre ?? `Jefe ${j.jefeId}`}</h2>
++                <ul className="space-y-2">
++                  {tareas.map((t) => (
++                    <li key={t.id} className="flex items-center justify-between gap-3 p-3 rounded-md border-2 border-acero/20">
++                      <span>
++                        <span className="block font-semibold">{t.titulo}</span>
++                        <span className="block text-sm text-acero/70">{dec[t.id] ? 'Marcada por el alumno' : 'Sin marcar'}</span>
++                      </span>
++                      <button
++                        onClick={() => aprobarTarea(j, t.id, !ap[t.id])}
++                        className={`${btn} ${ap[t.id] ? 'bg-operativa text-white border-operativa' : ''}`}
++                      >
++                        {ap[t.id] ? 'Aprobada ✓' : 'Aprobar'}
++                      </button>
++                    </li>
++                  ))}
++                </ul>
++                {j.premioChecklist && <p className="mt-2 text-sm text-operativa font-semibold">Checklist completo: puntos ya sumados al turno.</p>}
++
++                <div className="mt-5 p-3 rounded-md border-2 border-acero/20">
++                  <p className="font-semibold">Desafío: {desafio.enunciado}</p>
++                  <p className="text-sm text-acero/70 mt-1">Respuesta correcta: {desafio.respuesta}</p>
++                  <p className="mt-2">
++                    Respuesta del alumno: <b>{j.respuesta ?? (j.desafioAprobado ? '(aprobada)' : 'sin enviar')}</b>
++                  </p>
++                  {j.desafioAprobado ? (
++                    <p className="mt-2 text-operativa font-semibold">Aprobado: puntos ya sumados al turno.</p>
++                  ) : (
++                    j.respuesta != null && (
++                      <div className="mt-3 flex gap-2">
++                        <button onClick={() => aprobarDesafio(j)} className={`${btn} bg-operativa text-white border-operativa`}>Aprobar</button>
++                        <button onClick={() => rechazarDesafio(j)} className={`${btn} text-alarma border-alarma`}>Rechazar</button>
++                      </div>
++                    )
++                  )}
++                </div>
++              </section>
++            );
++          })}
++        </div>
++        <Leaderboard />
++      </main>
++    </div>
++  );
++}
+diff --git a/src/components/QualityControl.jsx b/src/components/QualityControl.jsx
+index 17c0833..c34646f 100644
+--- a/src/components/QualityControl.jsx
++++ b/src/components/QualityControl.jsx
+@@ -1,19 +1,17 @@
+ import { useState } from 'react';
+-import { Calculator, CircleCheck, CircleX, Lightbulb } from 'lucide-react';
++import { Calculator, CircleCheck, CircleX, Hourglass, Lightbulb } from 'lucide-react';
+ import { usePlant } from '../context/PlantContext';
+ 
+ export default function QualityControl() {
+-  const { jornada, verificarDesafio, desafioResuelto, puntosDesafio } = usePlant();
++  const { jornada, enviarRespuesta, respuestaEnviada, rechazos, desafioResuelto, puntosDesafio } = usePlant();
+   const [valor, setValor] = useState('');
+-  const [resultado, setResultado] = useState(null); // null | 'ok' | 'error'
+-  const [intentos, setIntentos] = useState(0);
++  const bloqueado = desafioResuelto || respuestaEnviada !== null;
+ 
+   const handleSubmit = (e) => {
+     e.preventDefault();
+     if (!valor.trim()) return;
+-    const ok = verificarDesafio(valor);
+-    setResultado(ok ? 'ok' : 'error');
+-    if (!ok) setIntentos((n) => n + 1);
++    enviarRespuesta(valor);
++    setValor('');
+   };
+ 
+   return (
+@@ -28,21 +26,15 @@ export default function QualityControl() {
+       <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-2">
+         <label htmlFor="resultado" className="sr-only">Resultado del desafío</label>
+         <input
+-          id="resultado"
+-          type="text"
+-          inputMode="decimal"
+-          value={valor}
+-          onChange={(e) => { setValor(e.target.value); setResultado(null); }}
+-          disabled={desafioResuelto}
+-          placeholder="Tu resultado"
++          id="resultado" type="text" inputMode="decimal" maxLength={20} value={valor}
++          onChange={(e) => setValor(e.target.value)} disabled={bloqueado} placeholder="Tu resultado"
+           className="flex-1 border-2 border-acero rounded-md px-3 py-2.5 focus:outline-none focus:ring-4 focus:ring-seguridad/60 disabled:bg-hormigon"
+         />
+         <button
+-          type="submit"
+-          disabled={desafioResuelto || !valor.trim()}
++          type="submit" disabled={bloqueado || !valor.trim()}
+           className="bg-acero text-seguridad font-display text-2xl font-bold px-6 py-2 rounded-md transition enabled:hover:bg-seguridad enabled:hover:text-acero border-2 border-acero disabled:opacity-40 disabled:cursor-not-allowed focus:outline-none focus-visible:ring-4 focus-visible:ring-seguridad/60"
+         >
+-          Verificar
++          Enviar
+         </button>
+       </form>
+ 
+@@ -50,16 +42,22 @@ export default function QualityControl() {
+         {desafioResuelto && (
+           <p className="anim-exito flex items-center gap-2 text-operativa font-semibold">
+             <CircleCheck className="size-5" aria-hidden="true" />
+-            Pieza aprobada. Tu turno suma {puntosDesafio} puntos.
++            Pieza aprobada por el docente. Tu turno suma {puntosDesafio} puntos.
+           </p>
+         )}
+-        {resultado === 'error' && !desafioResuelto && (
++        {!desafioResuelto && respuestaEnviada !== null && (
++          <p className="flex items-center gap-2 font-semibold">
++            <Hourglass className="size-5" aria-hidden="true" />
++            Respuesta enviada ({respuestaEnviada}). Esperando revisión del docente.
++          </p>
++        )}
++        {!desafioResuelto && respuestaEnviada === null && rechazos > 0 && (
+           <p className="flex items-center gap-2 text-alarma font-semibold">
+             <CircleX className="size-5" aria-hidden="true" />
+-            Pieza rechazada. Revisá el cálculo e intentá de nuevo.
++            Pieza rechazada. Revisá el cálculo y enviala de nuevo.
+           </p>
+         )}
+-        {intentos >= 2 && !desafioResuelto && (
++        {rechazos >= 2 && !desafioResuelto && (
+           <p className="flex items-center gap-2 mt-1 text-acero/80">
+             <Lightbulb className="size-5 text-seguridad" aria-hidden="true" />
+             Pista: {jornada.desafio.pista}
+diff --git a/src/context/PlantContext.jsx b/src/context/PlantContext.jsx
+index a0b3bdb..504e82f 100644
+--- a/src/context/PlantContext.jsx
++++ b/src/context/PlantContext.jsx
+@@ -1,106 +1,153 @@
+-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
++import { createContext, useContext, useEffect, useMemo, useState } from 'react';
++import { onAuthStateChanged, signInAnonymously, signInWithEmailAndPassword, signOut } from 'firebase/auth';
++import {
++  collection, deleteField, doc, getDoc, increment, onSnapshot, query, runTransaction, setDoc, updateDoc, where,
++} from 'firebase/firestore';
++import { auth, db } from '../firebase';
+ import { ALUMNOS, TURNOS, TAREAS, PUNTAJES_INICIALES, getJornada, jefeDelDia } from '../data/mockData';
+ 
+ const PlantContext = createContext(null);
+ 
+ const PUNTOS_CHECKLIST = 10;
+ const PUNTOS_DESAFIO = 15;
+-
+-const STORAGE_KEY = 'jefe-de-planta:v1';
++const SESION_KEY = 'jefe-de-planta:sesion';
+ 
+ const hoyISO = () => {
+   const d = new Date();
+   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+ };
+ 
+-// Puntajes: se guardan siempre. Progreso del día (jefe, checklist, desafío): solo vale para la fecha de hoy.
+-function cargarInicial() {
+-  const fecha = hoyISO();
+-  let guardado = {};
++// La sesión del Jefe (quién es hoy en este dispositivo) es local; puntos y progreso viven en Firestore.
++function leerSesion(fecha) {
+   try {
+-    const raw = JSON.parse(localStorage.getItem(STORAGE_KEY));
+-    if (raw && typeof raw === 'object') guardado = raw;
+-  } catch { /* sin almacenamiento o dato corrupto */ }
+-
+-  const puntajes = { ...PUNTAJES_INICIALES };
+-  for (const t of TURNOS) {
+-    if (Number.isFinite(guardado.puntajes?.[t.id])) puntajes[t.id] = guardado.puntajes[t.id];
+-  }
+-  const dia = guardado.fecha === fecha && guardado.dia && typeof guardado.dia === 'object' ? guardado.dia : {};
+-  return {
+-    fecha,
+-    puntajes,
+-    jefeId: ALUMNOS.some((a) => a.id === dia.jefeId) ? dia.jefeId : null,
+-    hechas: dia.hechas && typeof dia.hechas === 'object' ? dia.hechas : {},
+-    desafioResuelto: dia.desafioResuelto === true,
+-    premioChecklist: dia.premioChecklist === true,
+-  };
++    const s = JSON.parse(localStorage.getItem(SESION_KEY));
++    if (s?.fecha === fecha && ALUMNOS.some((a) => a.id === s.jefeId)) return s.jefeId;
++  } catch { /* sin almacenamiento */ }
++  return null;
++}
++
++const turnoDe = (jefeId) => ALUMNOS.find((a) => a.id === jefeId)?.turno;
++
++// Suma puntos a un turno dentro de una transacción (si el documento no existe, parte del puntaje inicial)
++async function leerTurno(tx, turnoId) {
++  const ref = doc(db, 'turnos', turnoId);
++  return { ref, existe: (await tx.get(ref)).exists(), turnoId };
+ }
++const sumar = (tx, t, n) => tx.set(t.ref, { puntos: t.existe ? increment(n) : PUNTAJES_INICIALES[t.turnoId] + n });
+ 
+ export function PlantProvider({ children }) {
+-  const [inicial] = useState(cargarInicial);
+-  const [jefeId, setJefeId] = useState(inicial.jefeId);
+-  const [hechas, setHechas] = useState(inicial.hechas);
+-  const [desafioResuelto, setDesafioResuelto] = useState(inicial.desafioResuelto);
+-  const [premioChecklist, setPremioChecklist] = useState(inicial.premioChecklist);
+-  const [puntajes, setPuntajes] = useState(inicial.puntajes);
++  const [fecha] = useState(hoyISO);
++  const [user, setUser] = useState(null);
++  const [esDocente, setEsDocente] = useState(false);
++  const [authListo, setAuthListo] = useState(false);
++  const [error, setError] = useState('');
++  const [puntajes, setPuntajes] = useState({});
++  const [jornadasHoy, setJornadasHoy] = useState([]);
++  const [jefeId, setJefeId] = useState(() => leerSesion(fecha));
++
++  // Sesión: anónima para los alumnos; con email para el docente (debe figurar en /docentes/{uid})
++  useEffect(
++    () =>
++      onAuthStateChanged(auth, async (u) => {
++        if (!u) {
++          setUser(null);
++          setEsDocente(false);
++          try { await signInAnonymously(auth); } catch { setError('No se pudo conectar con el servidor.'); setAuthListo(true); }
++          return;
++        }
++        let docente = false;
++        if (!u.isAnonymous) {
++          try { docente = (await getDoc(doc(db, 'docentes', u.uid))).exists(); } catch { docente = false; }
++        }
++        setEsDocente(docente);
++        setUser(u);
++        setAuthListo(true);
++      }),
++    []
++  );
+ 
++  // Tiempo real: puntajes de los turnos y jornadas de hoy
+   useEffect(() => {
+-    try {
+-      localStorage.setItem(
+-        STORAGE_KEY,
+-        JSON.stringify({
+-          fecha: inicial.fecha,
+-          puntajes,
+-          dia: { jefeId, hechas, desafioResuelto, premioChecklist },
+-        })
+-      );
+-    } catch { /* sin almacenamiento */ }
+-  }, [inicial.fecha, puntajes, jefeId, hechas, desafioResuelto, premioChecklist]);
++    if (!user) return undefined;
++    const fallo = () => setError('No se pudieron leer los datos. Revisá la conexión.');
++    const off1 = onSnapshot(collection(db, 'turnos'), (s) => {
++      const p = {};
++      s.forEach((d) => { p[d.id] = d.data().puntos; });
++      setPuntajes(p);
++    }, fallo);
++    const off2 = onSnapshot(query(collection(db, 'jornadas'), where('fecha', '==', fecha)), (s) => {
++      setJornadasHoy(s.docs.map((d) => ({ id: d.id, ...d.data() })));
++    }, fallo);
++    return () => { off1(); off2(); };
++  }, [user, fecha]);
+ 
+   const jornada = useMemo(getJornada, []);
+   const jefe = ALUMNOS.find((a) => a.id === jefeId) ?? null;
+-  const plantaOperativa = TAREAS.every((t) => hechas[t.id]);
+-
+-  const sumarPuntos = useCallback((turnoId, cantidad) => {
+-    setPuntajes((p) => ({ ...p, [turnoId]: p[turnoId] + cantidad }));
+-  }, []);
+-
+-  // Premio por completar el checklist (una sola vez por jornada)
+-  useEffect(() => {
+-    if (plantaOperativa && jefe && !premioChecklist) {
+-      sumarPuntos(jefe.turno, PUNTOS_CHECKLIST);
+-      setPremioChecklist(true);
+-    }
+-  }, [plantaOperativa, jefe, premioChecklist, sumarPuntos]);
+-
+-  const iniciarTurno = (id) => setJefeId(id);
+-
+-  // Solo cierra la sesión: el progreso del día se conserva, así no se puede cobrar el premio dos veces.
+-  const cerrarTurno = () => setJefeId(null);
+-
+-  const toggleTarea = (id) => setHechas((h) => ({ ...h, [id]: !h[id] }));
+-
+-  const verificarDesafio = (valor) => {
+-    const numero = parseFloat(String(valor).replace(',', '.'));
+-    const correcto = Math.abs(numero - jornada.desafio.respuesta) < 0.001;
+-    if (correcto && !desafioResuelto && jefe) {
+-      setDesafioResuelto(true);
+-      sumarPuntos(jefe.turno, PUNTOS_DESAFIO);
+-    }
+-    return correcto;
+-  };
++  const actual = jornadasHoy.find((j) => j.jefeId === jefeId) ?? {};
++  const hechas = actual.declaradas ?? {};
++  const aprobadas = actual.aprobadas ?? {};
++  const plantaOperativa = TAREAS.every((t) => aprobadas[t.id]);
+ 
+   const ranking = useMemo(
+-    () =>
+-      TURNOS.map((t) => ({ ...t, puntos: puntajes[t.id] })).sort((a, b) => b.puntos - a.puntos),
++    () => TURNOS.map((t) => ({ ...t, puntos: puntajes[t.id] ?? PUNTAJES_INICIALES[t.id] })).sort((a, b) => b.puntos - a.puntos),
+     [puntajes]
+   );
+ 
++  const guardar = (id, datos) =>
++    setDoc(doc(db, 'jornadas', `${fecha}_${id}`), { fecha, jefeId: id, ...datos }, { merge: true })
++      .catch(() => setError('No se pudo guardar. Intentá de nuevo.'));
++
++  // ---- Alumno: declara tareas y envía su respuesta; no suma puntos por su cuenta ----
++  const iniciarTurno = (id) => {
++    setJefeId(id);
++    try { localStorage.setItem(SESION_KEY, JSON.stringify({ fecha, jefeId: id })); } catch { /* sin almacenamiento */ }
++  };
++  const cerrarTurno = () => {
++    setJefeId(null);
++    try { localStorage.removeItem(SESION_KEY); } catch { /* sin almacenamiento */ }
++  };
++  const toggleTarea = (tareaId) => guardar(jefeId, { declaradas: { [tareaId]: !hechas[tareaId] } });
++  const enviarRespuesta = (valor) => guardar(jefeId, { respuesta: String(valor).trim().slice(0, 20) });
++
++  // ---- Docente: aprueba y recién ahí se suman los puntos (una vez por jornada) ----
++  const aprobarTarea = (j, tareaId, valor) =>
++    runTransaction(db, async (tx) => {
++      const ref = doc(db, 'jornadas', j.id);
++      const d = (await tx.get(ref)).data();
++      const nuevas = { ...(d.aprobadas ?? {}), [tareaId]: valor };
++      const cambios = { aprobadas: nuevas };
++      if (TAREAS.every((t) => nuevas[t.id]) && !d.premioChecklist) {
++        const t = await leerTurno(tx, turnoDe(d.jefeId));
++        cambios.premioChecklist = true;
++        sumar(tx, t, PUNTOS_CHECKLIST);
++      }
++      tx.update(ref, cambios);
++    }).catch(() => setError('No se pudo aprobar. Intentá de nuevo.'));
++
++  const aprobarDesafio = (j) =>
++    runTransaction(db, async (tx) => {
++      const ref = doc(db, 'jornadas', j.id);
++      const d = (await tx.get(ref)).data();
++      if (d.desafioAprobado) return;
++      const t = await leerTurno(tx, turnoDe(d.jefeId));
++      sumar(tx, t, PUNTOS_DESAFIO);
++      tx.update(ref, { desafioAprobado: true });
++    }).catch(() => setError('No se pudo aprobar. Intentá de nuevo.'));
++
++  const rechazarDesafio = (j) =>
++    updateDoc(doc(db, 'jornadas', j.id), { respuesta: deleteField(), rechazos: increment(1) })
++      .catch(() => setError('No se pudo rechazar. Intentá de nuevo.'));
++
++  const loginDocente = (email, clave) => signInWithEmailAndPassword(auth, email, clave);
++  const logoutDocente = () => signOut(auth);
++
+   const value = {
+-    alumnos: ALUMNOS, tareas: TAREAS, jornada, jefe, jefeSugerido: jefeDelDia(), hechas, plantaOperativa,
+-    desafioResuelto, ranking, puntosDesafio: PUNTOS_DESAFIO, puntosChecklist: PUNTOS_CHECKLIST,
+-    iniciarTurno, cerrarTurno, toggleTarea, verificarDesafio,
++    alumnos: ALUMNOS, tareas: TAREAS, jornada, jefe, jefeSugerido: jefeDelDia(), hechas, aprobadas, plantaOperativa,
++    desafioResuelto: actual.desafioAprobado === true, respuestaEnviada: actual.respuesta ?? null, rechazos: actual.rechazos ?? 0,
++    ranking, puntosDesafio: PUNTOS_DESAFIO, puntosChecklist: PUNTOS_CHECKLIST,
++    iniciarTurno, cerrarTurno, toggleTarea, enviarRespuesta,
++    authListo, esDocente, cuentaSinPermiso: !!user && !user.isAnonymous && !esDocente, error,
++    jornadasHoy, aprobarTarea, aprobarDesafio, rechazarDesafio, loginDocente, logoutDocente,
+   };
+ 
+   return <PlantContext.Provider value={value}>{children}</PlantContext.Provider>;
+diff --git a/src/data/mockData.js b/src/data/mockData.js
+index 657f44f..bc88184 100644
+--- a/src/data/mockData.js
++++ b/src/data/mockData.js
+@@ -34,6 +34,13 @@ export const DESAFIOS = [
+   { enunciado: '¿Cuánto es (−4)² + 3·(−5) + 20 ÷ 4?', respuesta: 6, pista: 'Respetá la jerarquía de operaciones.' },
+ ];
+ 
++// Desafío que corresponde a una fecha 'AAAA-MM-DD' (fin de semana usa el del lunes)
++export function desafioDeFecha(iso) {
++  const [y, m, d] = iso.split('-').map(Number);
++  const dow = new Date(y, m - 1, d).getDay();
++  return DESAFIOS[dow >= 1 && dow <= 5 ? dow - 1 : 0];
++}
++
+ const DIAS_SEMANA = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+ 
+ // Jefe de Planta que le toca al día indicado (null en fin de semana)
+diff --git a/src/firebase.js b/src/firebase.js
+new file mode 100644
+index 0000000..774338a
+--- /dev/null
++++ b/src/firebase.js
+@@ -0,0 +1,23 @@
++import { initializeApp } from 'firebase/app';
++import { initializeAppCheck, ReCaptchaV3Provider } from 'firebase/app-check';
++import { getAuth } from 'firebase/auth';
++import { getFirestore } from 'firebase/firestore';
++
++// Las credenciales salen del archivo .env (ver .env.example)
++const app = initializeApp({
++  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
++  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
++  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
++  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
++  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
++  appId: import.meta.env.VITE_FIREBASE_APP_ID,
++});
++
++const siteKey = import.meta.env.VITE_RECAPTCHA_SITE_KEY;
++if (siteKey) {
++  if (import.meta.env.DEV) self.FIREBASE_APPCHECK_DEBUG_TOKEN = true;
++  initializeAppCheck(app, { provider: new ReCaptchaV3Provider(siteKey), isTokenAutoRefreshEnabled: true });
++}
++
++export const auth = getAuth(app);
++export const db = getFirestore(app);
