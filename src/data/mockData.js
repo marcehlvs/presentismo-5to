@@ -5,7 +5,7 @@ export const TURNOS = [
   { id: 'delta', nombre: 'Turno Delta' },
 ];
 
-export const PUNTAJES_INICIALES = { alfa: 120, beta: 105, gamma: 98, delta: 87 };
+export const PUNTAJES_INICIALES = { alfa: 0, beta: 0, gamma: 0, delta: 0 };
 
 // Jefe de Planta de cada día de la semana
 export const ALUMNOS = [

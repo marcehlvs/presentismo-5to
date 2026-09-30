@@ -11,6 +11,8 @@ const PlantContext = createContext(null);
 const PUNTOS_CHECKLIST = 10;
 const PUNTOS_DESAFIO = 15;
 const SESION_KEY = 'jefe-de-planta:sesion';
+// true: al recargar la página el dispositivo recuerda quién es el Jefe de hoy. false: siempre se vuelve a elegir.
+const RECORDAR_SESION = false;
 
 const hoyISO = () => {
   const d = new Date();
@@ -19,6 +21,7 @@ const hoyISO = () => {
 
 // La sesión del Jefe (quién es hoy en este dispositivo) es local; puntos y progreso viven en Firestore.
 function leerSesion(fecha) {
+  if (!RECORDAR_SESION) return null;
   try {
     const s = JSON.parse(localStorage.getItem(SESION_KEY));
     if (s?.fecha === fecha && ALUMNOS.some((a) => a.id === s.jefeId)) return s.jefeId;
@@ -120,7 +123,7 @@ export function PlantProvider({ children }) {
   // ---- Alumno: declara tareas y envía su respuesta; no suma puntos por su cuenta ----
   const iniciarTurno = (id) => {
     setJefeId(id);
-    try { localStorage.setItem(SESION_KEY, JSON.stringify({ fecha, jefeId: id })); } catch { /* sin almacenamiento */ }
+    if (RECORDAR_SESION) try { localStorage.setItem(SESION_KEY, JSON.stringify({ fecha, jefeId: id })); } catch { /* sin almacenamiento */ }
   };
   const cerrarTurno = () => {
     setJefeId(null);

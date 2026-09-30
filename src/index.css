@@ -24,9 +24,11 @@
   to   { opacity: 1; transform: scale(1); }
 }
 @keyframes girar { to { transform: rotate(360deg); } }
+@keyframes carga { from { transform: translateX(-100%); } to { transform: translateX(300%); } }
 .anim-exito { animation: aparecer 0.4s ease-out; }
 .anim-giro  { animation: girar 4s linear infinite; }
+.anim-carga { animation: carga 1.3s ease-in-out infinite; }
 
 @media (prefers-reduced-motion: reduce) {
-  .anim-exito, .anim-giro { animation: none; }
+  .anim-exito, .anim-giro, .anim-carga { animation: none; }
 }

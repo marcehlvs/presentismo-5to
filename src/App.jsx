@@ -3,6 +3,7 @@ import Login from './components/Login';
 import Dashboard from './components/Dashboard';
 import PanelDocente from './components/PanelDocente';
 import AccesoDocente from './components/AccesoDocente';
+import Cargando from './components/Cargando';
 
 function Aviso({ children }) {
   return <p className="p-8 text-lg font-semibold">{children}</p>;
@@ -19,7 +20,7 @@ function ErrorBanner({ mensaje }) {
 function Pantalla() {
   const { jefe, authListo, esDocente, cuentaSinPermiso, logoutDocente, error } = usePlant();
 
-  if (!authListo) return <Aviso>{error || 'Conectando con la planta…'}</Aviso>;
+  if (!authListo) return <Cargando />;
   if (esDocente) return <PanelDocente />;
   if (cuentaSinPermiso) {
     return (
