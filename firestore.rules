@@ -16,14 +16,43 @@ service cloud.firestore {
       let d = request.resource.data;
       return (!('declaradas' in d)
               || (d.declaradas is map
-                  && d.declaradas.keys().hasOnly(['fichaje', 'ventilacion', 'insumos', 'desafio'])
+                  && d.declaradas.keys().hasOnly(['fichaje', 'ventilacion', 'insumos', 'asistencia', 'desafio', 'limpieza', 'apagado', 'luces', 'x1', 'x2', 'x3', 'x4', 'x5'])
                   && d.declaradas.values().hasOnly([true, false])))
-          && (!('respuesta' in d) || (d.respuesta is string && d.respuesta.size() <= 20));
+          && (!('respuesta' in d) || (d.respuesta is string && d.respuesta.size() <= 200))
+          && (!('asistencia' in d)
+              || (d.asistencia is map
+                  && d.asistencia.keys().hasOnly(['presentes', 'tardes'])
+                  && d.asistencia.presentes is int && d.asistencia.tardes is int
+                  && d.asistencia.presentes >= 0 && d.asistencia.presentes <= 60
+                  && d.asistencia.tardes >= 0 && d.asistencia.tardes <= d.asistencia.presentes));
     }
 
     match /docentes/{uid} {
       allow read: if signedIn() && request.auth.uid == uid;
       allow write: if false;
+    }
+
+    // Desafío del día: lo escribe el docente; los alumnos solo lo leen
+    match /desafios/{fecha} {
+      allow read: if signedIn();
+      allow write: if esDocente();
+    }
+
+    // Respuesta esperada / criterio de corrección: solo visible para docentes
+    match /desafios_docente/{fecha} {
+      allow read, write: if esDocente();
+    }
+
+    // Tareas extra del día: las escribe el docente
+    match /tareas_extra/{fecha} {
+      allow read: if signedIn();
+      allow write: if esDocente();
+    }
+
+    // Premio de la semana: lo carga el docente (el id es el lunes de la semana)
+    match /premios/{semana} {
+      allow read: if signedIn();
+      allow write: if esDocente();
     }
 
     match /turnos/{turnoId} {
@@ -35,7 +64,7 @@ service cloud.firestore {
       allow read: if signedIn();
 
       allow create: if signedIn()
-        && request.resource.data.keys().hasOnly(['fecha', 'jefeId', 'declaradas', 'respuesta'])
+        && request.resource.data.keys().hasOnly(['fecha', 'jefeId', 'declaradas', 'respuesta', 'asistencia'])
         && request.resource.data.keys().hasAll(['fecha', 'jefeId'])
         && request.resource.data.fecha is string
         && request.resource.data.fecha.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
@@ -45,11 +74,14 @@ service cloud.firestore {
         && datosAlumnoValidos();
 
       allow update: if signedIn()
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['declaradas', 'respuesta'])
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['declaradas', 'respuesta', 'asistencia'])
         && datosAlumnoValidos()
         // una vez aprobado el desafío, la respuesta ya no se puede cambiar
         && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['respuesta'])
-            || resource.data.get('desafioAprobado', false) == false);
+            || resource.data.get('desafioAprobado', false) == false)
+        // ni la asistencia, una vez aprobada
+        && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['asistencia'])
+            || resource.data.get('aprobadas', {}).get('asistencia', false) == false);
 
       allow create, update, delete: if esDocente();
     }

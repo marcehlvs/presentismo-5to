@@ -1,5 +1,6 @@
 import { Trophy } from 'lucide-react';
 import { usePlant } from '../context/PlantContext';
+import { ALUMNOS } from '../data/mockData';
 
 export default function Leaderboard() {
   const { ranking, jefe } = usePlant();
@@ -15,6 +16,7 @@ export default function Leaderboard() {
       <ol className="space-y-3">
         {ranking.map((t, i) => {
           const esMio = jefe?.turno === t.id;
+          const lider = ALUMNOS.find((a) => a.turno === t.id);
           return (
             <li
               key={t.id}
@@ -24,10 +26,11 @@ export default function Leaderboard() {
                 <span className="flex items-center gap-2 font-semibold">
                   <span className="font-display text-2xl w-6">{i + 1}</span>
                   {t.nombre}
-                  {esMio && <span className="text-sm font-medium text-acero/70">(tu turno)</span>}
+                  {esMio && <span className="text-sm font-medium text-acero/70">(tu equipo)</span>}
                 </span>
                 <span className="font-display text-2xl font-bold tabular-nums">{t.puntos} pts</span>
               </div>
+              {lider && <p className="text-sm text-acero/70 pl-8">Líder: {lider.nombre} · {lider.dia}</p>}
               <div className="h-1.5 bg-hormigon rounded-full mt-2 overflow-hidden">
                 <div
                   className="h-full bg-acero transition-all duration-500"

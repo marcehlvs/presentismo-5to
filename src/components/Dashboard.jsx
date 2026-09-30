@@ -1,11 +1,14 @@
 import { HardHat, CalendarDays, Power, LogOut } from 'lucide-react';
 import { usePlant } from '../context/PlantContext';
-import MorningChecklist from './MorningChecklist';
+import Checklist from './Checklist';
+import { equipoDe } from '../data/mockData';
 import QualityControl from './QualityControl';
 import Leaderboard from './Leaderboard';
+import PremioSemana from './PremioSemana';
 
 export default function Dashboard() {
-  const { jefe, jornada, plantaOperativa, cerrarTurno } = usePlant();
+  const { jefe, jornada, plantaOperativa, plantaCerrada, cerrarTurno } = usePlant();
+  const equipo = equipoDe(jefe);
 
   return (
     <div className="min-h-screen">
@@ -20,7 +23,7 @@ export default function Dashboard() {
               <p className="font-display text-3xl font-bold leading-none">{jefe.nombre}</p>
               <p className="flex items-center gap-1.5 text-white/75 mt-1">
                 <CalendarDays className="size-4" aria-hidden="true" />
-                {jornada.diaNombre} · Jefe de Planta
+                {jornada.diaNombre} · Líder de {equipo?.nombre}
               </p>
             </div>
           </div>
@@ -29,11 +32,11 @@ export default function Dashboard() {
             <span
               role="status"
               className={`flex items-center gap-2 px-4 py-2 rounded-md font-display text-2xl font-bold ${
-                plantaOperativa ? 'bg-operativa text-white' : 'bg-white/10 text-white/80 border border-white/30'
+                plantaCerrada ? 'bg-seguridad text-acero' : plantaOperativa ? 'bg-operativa text-white' : 'bg-white/10 text-white/80 border border-white/30'
               }`}
             >
               <Power className="size-5" aria-hidden="true" />
-              {plantaOperativa ? 'Planta Operativa' : 'Planta Inactiva'}
+              {plantaCerrada ? 'Planta Cerrada' : plantaOperativa ? 'Planta Operativa' : 'Planta Inactiva'}
             </span>
             <button
               onClick={cerrarTurno}
@@ -48,10 +51,14 @@ export default function Dashboard() {
 
       <main className="max-w-6xl mx-auto px-4 py-6 grid gap-6 lg:grid-cols-[1fr_360px] items-start">
         <div className="space-y-6">
-          <MorningChecklist />
+          <Checklist momento="apertura" titulo="Checklist matutino" />
           <QualityControl />
+          <Checklist momento="cierre" titulo="Cierre de planta" />
         </div>
-        <Leaderboard />
+        <div className="space-y-6">
+          <Leaderboard />
+          <PremioSemana />
+        </div>
       </main>
     </div>
   );

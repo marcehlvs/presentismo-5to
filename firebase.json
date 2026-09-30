@@ -1,17 +1,18 @@
 {
-  "firestore": { "rules": "firestore.rules" },
+  "firestore": {
+    "rules": "firestore.rules"
+  },
   "hosting": {
     "public": "dist",
-    "rewrites": [{ "source": "**", "destination": "/index.html" }],
-    "headers": [
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "rewrites": [
       {
         "source": "**",
-        "headers": [
-          { "key": "Content-Security-Policy", "value": "default-src 'self'; script-src 'self' https://www.google.com/recaptcha/ https://www.gstatic.com/recaptcha/ https://apis.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://www.google.com; frame-src https://www.google.com/recaptcha/ https://recaptcha.google.com https://*.firebaseapp.com; object-src 'none'; base-uri 'self'; frame-ancestors 'none'" },
-          { "key": "X-Content-Type-Options", "value": "nosniff" },
-          { "key": "Referrer-Policy", "value": "no-referrer" },
-          { "key": "X-Frame-Options", "value": "DENY" }
-        ]
+        "destination": "/index.html"
       }
     ]
   }

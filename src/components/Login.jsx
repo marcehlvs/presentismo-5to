@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Factory, HardHat } from 'lucide-react';
 import { usePlant } from '../context/PlantContext';
+import { equipoDe } from '../data/mockData';
 
 export default function Login() {
   const { alumnos, iniciarTurno, jefeSugerido } = usePlant();
@@ -33,7 +34,7 @@ export default function Login() {
             >
               <option value="">Elegí tu nombre</option>
               {alumnos.map((a) => (
-                <option key={a.id} value={a.id}>{a.dia} · {a.nombre}</option>
+                <option key={a.id} value={a.id}>{a.dia} · {a.nombre} · {equipoDe(a)?.nombre}</option>
               ))}
             </select>
             {jefeSugerido && (

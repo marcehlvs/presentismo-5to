@@ -1,45 +1,42 @@
+// Un equipo por cada Jefe de Planta (su líder). Para cambiar un nombre, editá solo 'nombre': los ids no se tocan.
 export const TURNOS = [
-  { id: 'alfa', nombre: 'Turno Alfa' },
-  { id: 'beta', nombre: 'Turno Beta' },
-  { id: 'gamma', nombre: 'Turno Gamma' },
-  { id: 'delta', nombre: 'Turno Delta' },
+  { id: 'e1', nombre: 'Equipo Engranajes' },
+  { id: 'e2', nombre: 'Equipo Pistones' },
+  { id: 'e3', nombre: 'Equipo Turbinas' },
+  { id: 'e4', nombre: 'Equipo Palancas' },
+  { id: 'e5', nombre: 'Equipo Circuitos' },
 ];
 
-export const PUNTAJES_INICIALES = { alfa: 0, beta: 0, gamma: 0, delta: 0 };
+export const equipoDe = (alumno) => TURNOS.find((t) => t.id === alumno?.turno) ?? null;
+
+export const PUNTAJES_INICIALES = { e1: 0, e2: 0, e3: 0, e4: 0, e5: 0 };
 
 // Jefe de Planta de cada día de la semana
 export const ALUMNOS = [
-  { id: 1, nombre: 'Mascaros, M.', dia: 'Lunes', turno: 'alfa' },
-  { id: 2, nombre: 'Ferrio, M.', dia: 'Martes', turno: 'beta' },
-  { id: 3, nombre: 'Gonzalez, V.', dia: 'Miércoles', turno: 'gamma' },
-  { id: 4, nombre: 'Godoy, U.', dia: 'Jueves', turno: 'delta' },
-  { id: 5, nombre: 'Toledo, D.', dia: 'Viernes', turno: 'alfa' },
+  { id: 1, nombre: 'Mascaros, M.', dia: 'Lunes', turno: 'e1' },
+  { id: 2, nombre: 'Ferrio, M.', dia: 'Martes', turno: 'e2' },
+  { id: 3, nombre: 'Gonzalez, V.', dia: 'Miércoles', turno: 'e3' },
+  { id: 4, nombre: 'Godoy, U.', dia: 'Jueves', turno: 'e4' },
+  { id: 5, nombre: 'Toledo, D.', dia: 'Viernes', turno: 'e5' },
 ];
 
 
 
 export const TAREAS = [
-  { id: 'fichaje', titulo: 'Fichaje Anticipado', detalle: 'Llegar antes del timbre y registrar la entrada', icono: 'Timer' },
-  { id: 'ventilacion', titulo: 'Ventilación y Pizarrón', detalle: 'Abrir ventanas y dejar el pizarrón limpio', icono: 'Wind' },
-  { id: 'insumos', titulo: 'Insumos listos', detalle: 'Tizas, borrador y materiales sobre el escritorio', icono: 'PackageCheck' },
-  { id: 'desafio', titulo: 'Desafío en Pizarrón', detalle: 'Escribir el desafío matemático del día', icono: 'Presentation' },
+  { id: 'fichaje', momento: 'apertura', titulo: 'Fichaje Anticipado', detalle: 'Llegar antes del timbre y registrar la entrada', icono: 'Timer' },
+  { id: 'ventilacion', momento: 'apertura', titulo: 'Ventilación y Pizarra', detalle: 'Abrir ventanas y dejar la pizarra despejada', icono: 'Wind' },
+  { id: 'insumos', momento: 'apertura', titulo: 'Pizarra digital lista', detalle: 'Encender la pizarra interactiva y verificar que funcione', icono: 'MonitorCheck' },
+  { id: 'asistencia', momento: 'apertura', titulo: 'Presentes y llegadas tarde', detalle: 'Contar cuántos hay y cuántos llegaron tarde (solo cantidades)', icono: 'Users' },
+  { id: 'desafio', momento: 'apertura', titulo: 'Desafío en pizarra', detalle: 'Mostrar en la pizarra el desafío que publicó el docente', icono: 'Presentation' },
+  { id: 'limpieza', momento: 'cierre', titulo: 'Aula limpia y ordenada', detalle: 'Papeles en el cesto, bancos alineados y piso despejado', icono: 'Sparkles' },
+  { id: 'apagado', momento: 'cierre', titulo: 'Pizarra y equipos apagados', detalle: 'Apagar la pizarra interactiva y el proyector', icono: 'Power' },
+  { id: 'luces', momento: 'cierre', titulo: 'Luces apagadas y puerta cerrada', detalle: 'Última mirada al aula antes de salir', icono: 'Lightbulb' },
 ];
 
-// Uno por día hábil (índice 0 = lunes)
-export const DESAFIOS = [
-  { enunciado: 'Una máquina produce 48 piezas por hora. ¿Cuántas piezas produce en 7 horas y media?', respuesta: 360, pista: 'Multiplicá 48 por 7,5.' },
-  { enunciado: 'Resolvé la ecuación 3x − 7 = 20. ¿Cuánto vale x?', respuesta: 9, pista: 'Sumá 7 a ambos lados y después dividí por 3.' },
-  { enunciado: 'Un lote de 250 piezas tiene 8% de piezas defectuosas. ¿Cuántas piezas defectuosas hay?', respuesta: 20, pista: 'Calculá el 8% de 250.' },
-  { enunciado: 'Una chapa rectangular mide 12 cm de base y 9 cm de altura. ¿Cuánto mide su diagonal en cm?', respuesta: 15, pista: 'Usá el teorema de Pitágoras.' },
-  { enunciado: '¿Cuánto es (−4)² + 3·(−5) + 20 ÷ 4?', respuesta: 6, pista: 'Respetá la jerarquía de operaciones.' },
-];
+export const MOMENTOS = { apertura: 'Checklist matutino', cierre: 'Cierre de planta' };
 
-// Desafío que corresponde a una fecha 'AAAA-MM-DD' (fin de semana usa el del lunes)
-export function desafioDeFecha(iso) {
-  const [y, m, d] = iso.split('-').map(Number);
-  const dow = new Date(y, m - 1, d).getDay();
-  return DESAFIOS[dow >= 1 && dow <= 5 ? dow - 1 : 0];
-}
+// Ranuras para las tareas que agrega el docente cada día (máximo 5)
+export const IDS_EXTRA = ['x1', 'x2', 'x3', 'x4', 'x5'];
 
 const DIAS_SEMANA = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
 
@@ -51,10 +48,7 @@ export function jefeDelDia(fecha = new Date()) {
 export function getJornada() {
   const hoy = new Date();
   const dia = hoy.toLocaleDateString('es-AR', { weekday: 'long' });
-  const dow = hoy.getDay(); // 0 = domingo
-  const indice = dow >= 1 && dow <= 5 ? dow - 1 : 0; // fin de semana usa el desafío del lunes
   return {
     diaNombre: dia.charAt(0).toUpperCase() + dia.slice(1),
-    desafio: DESAFIOS[indice],
   };
 }
