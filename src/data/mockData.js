@@ -9,11 +9,11 @@ export const PUNTAJES_INICIALES = { alfa: 120, beta: 105, gamma: 98, delta: 87 }
 
 // Jefe de Planta de cada día de la semana
 export const ALUMNOS = [
-  { id: 1, nombre: 'Mascaros, Malena', dia: 'Lunes', turno: 'alfa' },
-  { id: 2, nombre: 'Ferrio, Morena', dia: 'Martes', turno: 'beta' },
-  { id: 3, nombre: 'Gonzalez, Valentina', dia: 'Miércoles', turno: 'gamma' },
-  { id: 4, nombre: 'Godoy, Uma', dia: 'Jueves', turno: 'delta' },
-  { id: 5, nombre: 'Toledo, David', dia: 'Viernes', turno: 'alfa' },
+  { id: 1, nombre: 'Mascaros, M.', dia: 'Lunes', turno: 'alfa' },
+  { id: 2, nombre: 'Ferrio, M.', dia: 'Martes', turno: 'beta' },
+  { id: 3, nombre: 'Gonzalez, V.', dia: 'Miércoles', turno: 'gamma' },
+  { id: 4, nombre: 'Godoy, U.', dia: 'Jueves', turno: 'delta' },
+  { id: 5, nombre: 'Toledo, D.', dia: 'Viernes', turno: 'alfa' },
 ];
 
 

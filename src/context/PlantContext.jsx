@@ -26,6 +26,25 @@ function leerSesion(fecha) {
   return null;
 }
 
+// Traduce el error de Firebase a un mensaje útil (y lo deja en la consola del navegador)
+function mensajeError(e) {
+  console.error('[Firebase]', e?.code ?? '', e);
+  switch (e?.code) {
+    case 'permission-denied':
+    case 'firestore/permission-denied':
+      return 'Firestore rechazó la operación: revisá que las reglas estén publicadas.';
+    case 'auth/operation-not-allowed':
+      return 'Falta activar el acceso Anónimo en Firebase > Authentication.';
+    case 'auth/invalid-api-key':
+    case 'auth/api-key-not-valid.-please-pass-a-valid-api-key.':
+      return 'La configuración de Firebase (.env) es inválida.';
+    case 'unavailable':
+      return 'Sin conexión con el servidor.';
+    default:
+      return `Error de conexión (${e?.code ?? 'desconocido'}).`;
+  }
+}
+
 const turnoDe = (jefeId) => ALUMNOS.find((a) => a.id === jefeId)?.turno;
 
 // Suma puntos a un turno dentro de una transacción (si el documento no existe, parte del puntaje inicial)
@@ -52,7 +71,7 @@ export function PlantProvider({ children }) {
         if (!u) {
           setUser(null);
           setEsDocente(false);
-          try { await signInAnonymously(auth); } catch { setError('No se pudo conectar con el servidor.'); setAuthListo(true); }
+          try { await signInAnonymously(auth); } catch (e) { setError(mensajeError(e)); setAuthListo(true); }
           return;
         }
         let docente = false;
@@ -69,11 +88,12 @@ export function PlantProvider({ children }) {
   // Tiempo real: puntajes de los turnos y jornadas de hoy
   useEffect(() => {
     if (!user) return undefined;
-    const fallo = () => setError('No se pudieron leer los datos. Revisá la conexión.');
+    const fallo = (e) => setError(mensajeError(e));
     const off1 = onSnapshot(collection(db, 'turnos'), (s) => {
       const p = {};
       s.forEach((d) => { p[d.id] = d.data().puntos; });
       setPuntajes(p);
+      setError('');
     }, fallo);
     const off2 = onSnapshot(query(collection(db, 'jornadas'), where('fecha', '==', fecha)), (s) => {
       setJornadasHoy(s.docs.map((d) => ({ id: d.id, ...d.data() })));
@@ -95,7 +115,7 @@ export function PlantProvider({ children }) {
 
   const guardar = (id, datos) =>
     setDoc(doc(db, 'jornadas', `${fecha}_${id}`), { fecha, jefeId: id, ...datos }, { merge: true })
-      .catch(() => setError('No se pudo guardar. Intentá de nuevo.'));
+      .catch((e) => setError(mensajeError(e)));
 
   // ---- Alumno: declara tareas y envía su respuesta; no suma puntos por su cuenta ----
   const iniciarTurno = (id) => {
@@ -122,7 +142,7 @@ export function PlantProvider({ children }) {
         sumar(tx, t, PUNTOS_CHECKLIST);
       }
       tx.update(ref, cambios);
-    }).catch(() => setError('No se pudo aprobar. Intentá de nuevo.'));
+    }).catch((e) => setError(mensajeError(e)));
 
   const aprobarDesafio = (j) =>
     runTransaction(db, async (tx) => {
@@ -132,11 +152,11 @@ export function PlantProvider({ children }) {
       const t = await leerTurno(tx, turnoDe(d.jefeId));
       sumar(tx, t, PUNTOS_DESAFIO);
       tx.update(ref, { desafioAprobado: true });
-    }).catch(() => setError('No se pudo aprobar. Intentá de nuevo.'));
+    }).catch((e) => setError(mensajeError(e)));
 
   const rechazarDesafio = (j) =>
     updateDoc(doc(db, 'jornadas', j.id), { respuesta: deleteField(), rechazos: increment(1) })
-      .catch(() => setError('No se pudo rechazar. Intentá de nuevo.'));
+      .catch((e) => setError(mensajeError(e)));
 
   const loginDocente = (email, clave) => signInWithEmailAndPassword(auth, email, clave);
   const logoutDocente = () => signOut(auth);

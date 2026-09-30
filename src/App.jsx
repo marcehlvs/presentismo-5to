@@ -8,6 +8,14 @@ function Aviso({ children }) {
   return <p className="p-8 text-lg font-semibold">{children}</p>;
 }
 
+function ErrorBanner({ mensaje }) {
+  return (
+    <p role="alert" className="fixed top-0 inset-x-0 z-50 bg-alarma text-white text-center font-semibold px-4 py-2">
+      {mensaje}
+    </p>
+  );
+}
+
 function Pantalla() {
   const { jefe, authListo, esDocente, cuentaSinPermiso, logoutDocente, error } = usePlant();
 
@@ -21,9 +29,17 @@ function Pantalla() {
       </Aviso>
     );
   }
-  if (jefe) return <Dashboard />;
+  if (jefe) {
+    return (
+      <>
+        {error && <ErrorBanner mensaje={error} />}
+        <Dashboard />
+      </>
+    );
+  }
   return (
     <>
+      {error && <ErrorBanner mensaje={error} />}
       <Login />
       <AccesoDocente />
     </>
