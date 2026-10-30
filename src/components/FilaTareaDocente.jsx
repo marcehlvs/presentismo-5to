@@ -42,8 +42,8 @@ export default function FilaTareaDocente({ j, t }) {
           </button>
           <button
             onClick={rechazar}
-            disabled={hoySinClase || !declarada || aprobada}
-            title={!declarada && !aprobada ? 'El alumno todavía no la marcó' : undefined}
+            disabled={hoySinClase || aprobada || (!declarada && !texto.trim())}
+            title={!declarada && !aprobada && !texto.trim() ? 'El alumno no la marcó: escribí un comentario para avisarle qué falta' : undefined}
             className={`${btn} text-alarma border-alarma`}
           >
             Rechazar
