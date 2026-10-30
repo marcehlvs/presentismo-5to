@@ -3,8 +3,12 @@ import { ALUMNOS, TURNOS } from '../data/mockData';
 export const PUNTOS_CHECKLIST = 10;
 export const PUNTOS_CIERRE = 10;
 export const PUNTOS_DESAFIO = 15;
-// Ed. Física: solo se puede ganar los días en que el docente la marca (ver "Días especiales")
+// Ed. Física: puntos extra del día. Hay Ed. Física los días de DIAS_EDFISICA_AUTO (desde EDFISICA_AUTO_DESDE) y los que el docente
+// marque a mano; un día se puede quitar (lluvia, feriado, profe ausente) desde "Días especiales".
 export const PUNTOS_EDFISICA = 10;
+export const DIAS_EDFISICA_AUTO = [1, 5]; // 0 = domingo … 6 = sábado: lunes y viernes
+// Las jornadas anteriores a esta fecha no cambian (no tenían Ed. Física automática)
+export const EDFISICA_AUTO_DESDE = '2026-10-30';
 // Lo máximo que se puede sumar en una jornada común; los días con Ed. Física tienen PUNTOS_EDFISICA más
 export const PUNTOS_JORNADA = PUNTOS_CHECKLIST + PUNTOS_CIERRE + PUNTOS_DESAFIO;
 
@@ -101,4 +105,19 @@ export function resumenPorSemana(jornadas, bonos, diasSinClase, diasEdFisica) {
       { bonos: bonos.filter((b) => lunesDe(b.fecha) === l), diasSinClase, diasEdFisica }
     ),
   }));
+}
+
+// ¿Hay Ed. Física ese día? Lunes y viernes por defecto, salvo que el docente lo haya quitado (`sinEdFisica`) o no haya clase;
+// además cuentan los días que el docente marcó a mano (`edFisica`). `dias` son los documentos de /dias.
+// Devuelve algo con `.has(fecha)`, como un Set, para usarlo igual que antes.
+export function crearDiasEdFisica(dias = []) {
+  const porFecha = new Map(dias.map((d) => [d.fecha, d]));
+  return {
+    has(fecha) {
+      const d = porFecha.get(fecha);
+      if (d?.sinClase || d?.sinEdFisica) return false;
+      if (d?.edFisica) return true;
+      return fecha >= EDFISICA_AUTO_DESDE && DIAS_EDFISICA_AUTO.includes(deIso(fecha).getDay());
+    },
+  };
 }

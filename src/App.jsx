@@ -2,6 +2,7 @@ import { PlantProvider, usePlant } from './context/PlantContext';
 import Login from './components/Login';
 import Dashboard from './components/Dashboard';
 import PanelDocente from './components/PanelDocente';
+import PanelEdFisica from './components/PanelEdFisica';
 import AccesoDocente from './components/AccesoDocente';
 import Cargando from './components/Cargando';
 import ModoPantalla from './components/ModoPantalla';
@@ -22,7 +23,7 @@ function ErrorBanner({ mensaje }) {
 const esModoPantalla = () => window.location.pathname.replace(/\/+$/, '') === '/pantalla';
 
 function Pantalla() {
-  const { jefe, authListo, esDocente, cuentaSinPermiso, logoutDocente, error } = usePlant();
+  const { jefe, authListo, esDocente, esDocenteEF, cuentaSinPermiso, logoutDocente, error } = usePlant();
 
   if (!authListo) return <Cargando />;
   if (esModoPantalla()) {
@@ -34,6 +35,7 @@ function Pantalla() {
     );
   }
   if (esDocente) return <PanelDocente />;
+  if (esDocenteEF) return <PanelEdFisica />;
   if (cuentaSinPermiso) {
     return (
       <Aviso>

@@ -6,7 +6,7 @@ import {
 import { auth, db } from '../firebase';
 import { ALUMNOS, TURNOS, TAREAS, TAREAS_EDFISICA, PUNTAJES_INICIALES, getJornada, jefeDelDia, IDS_EXTRA } from '../data/mockData';
 import {
-  BONO_MAXIMO, PUNTOS_CHECKLIST, PUNTOS_CIERRE, PUNTOS_DESAFIO, PUNTOS_EDFISICA, deIso, hoyISO, lunesDe, resumenTurnos, sumarDias,
+  BONO_MAXIMO, PUNTOS_CHECKLIST, PUNTOS_CIERRE, PUNTOS_DESAFIO, PUNTOS_EDFISICA, crearDiasEdFisica, deIso, hoyISO, lunesDe, resumenTurnos, sumarDias,
 } from '../lib/semanas';
 import { alumnosEn, conVersion, sinVersion, validarLideres } from '../lib/lideres';
 
@@ -72,6 +72,7 @@ export function PlantProvider({ children }) {
   const [fecha, setFecha] = useState(hoyISO);
   const [user, setUser] = useState(null);
   const [esDocente, setEsDocente] = useState(false);
+  const [esDocenteEF, setEsDocenteEF] = useState(false); // cuenta docente de Ed. Física: solo aprueba el bloque de Ed. Física
   const [authListo, setAuthListo] = useState(false);
   const [error, setError] = useState('');
   const [puntajes, setPuntajes] = useState({});
@@ -103,14 +104,22 @@ export function PlantProvider({ children }) {
         if (!u) {
           setUser(null);
           setEsDocente(false);
+          setEsDocenteEF(false);
           try { await signInAnonymously(auth); } catch (e) { setError(mensajeError(e)); setAuthListo(true); }
           return;
         }
         let docente = false;
+        let soloEF = false;
         if (!u.isAnonymous) {
-          try { docente = (await getDoc(doc(db, 'docentes', u.uid))).exists(); } catch { docente = false; }
+          try {
+            const s = await getDoc(doc(db, 'docentes', u.uid));
+            // docentes/{uid} con rol = 'edfisica': solo gestiona Ed. Física; sin ese campo, docente completo
+            soloEF = s.exists() && s.data().rol === 'edfisica';
+            docente = s.exists() && !soloEF;
+          } catch { docente = false; soloEF = false; }
         }
         setEsDocente(docente);
+        setEsDocenteEF(soloEF);
         setUser(u);
         setAuthListo(true);
       }),
@@ -153,16 +162,16 @@ export function PlantProvider({ children }) {
   const semana = lunesDe(fecha);
   const sinClaseSemana = useMemo(() => setDeFechas(diasSemana), [diasSemana]);
   const sinClaseTodos = useMemo(() => setDeFechas(diasTodos), [diasTodos]);
-  const edFisicaSemana = useMemo(() => setDeFechas(diasSemana, 'edFisica'), [diasSemana]);
-  const edFisicaTodos = useMemo(() => setDeFechas(diasTodos, 'edFisica'), [diasTodos]);
+  const edFisicaSemana = useMemo(() => crearDiasEdFisica(diasSemana), [diasSemana]);
+  const edFisicaTodos = useMemo(() => crearDiasEdFisica(diasTodos), [diasTodos]);
   const resumenSemana = useMemo(
     () => resumenTurnos(jornadasSemana, { bonos: bonosSemana, diasSinClase: sinClaseSemana, diasEdFisica: edFisicaSemana }),
     [jornadasSemana, bonosSemana, sinClaseSemana, edFisicaSemana]
   );
   const diaHoy = diasSemana.find((d) => d.fecha === fecha) ?? null;
   const hoySinClase = !!diaHoy?.sinClase;
-  // Ed. Física: solo hay checklist los días en que el docente la marcó (y que tengan clase)
-  const hoyEdFisica = !!diaHoy?.edFisica && !hoySinClase;
+  // Ed. Física: lunes y viernes (salvo que el docente la haya quitado ese día) y los días que marcó a mano; solo si hay clase
+  const hoyEdFisica = edFisicaSemana.has(fecha) && !hoySinClase;
   const suplentesHoy = diaHoy?.suplentes ?? {};
   // Líderes vigentes hoy, y una función para ver los de otra fecha (por ejemplo, al mirar el historial)
   const alumnos = useMemo(() => alumnosEn(versionesLideres, fecha), [versionesLideres, fecha]);
@@ -221,8 +230,8 @@ export function PlantProvider({ children }) {
       const nuevas = { ...(d.aprobadas ?? {}), [tareaId]: valor };
       const cambios = { aprobadas: nuevas, devoluciones: conDevolucion(d, tareaId, 'aprobada', valor ? comentario : '') };
       let puntos = 0;
-      if (completo('apertura', nuevas) && !d.premioChecklist) { cambios.premioChecklist = true; puntos += PUNTOS_CHECKLIST; }
-      if (completo('cierre', nuevas) && !d.premioCierre) { cambios.premioCierre = true; puntos += PUNTOS_CIERRE; }
+      if (!esDocenteEF && completo('apertura', nuevas) && !d.premioChecklist) { cambios.premioChecklist = true; puntos += PUNTOS_CHECKLIST; }
+      if (!esDocenteEF && completo('cierre', nuevas) && !d.premioCierre) { cambios.premioCierre = true; puntos += PUNTOS_CIERRE; }
       if (hoyEdFisica && completo('edfisica', nuevas) && !d.premioEdFisica) { cambios.premioEdFisica = true; puntos += PUNTOS_EDFISICA; }
       if (puntos) sumar(tx, await leerTurno(tx, turnoDe(d.jefeId)), puntos);
       tx.update(ref, cambios);
@@ -321,7 +330,7 @@ export function PlantProvider({ children }) {
         const ref = doc(db, 'dias', fechaSel);
         const previo = (await tx.get(ref)).data() ?? {};
         const nuevo = mutar({ ...previo, suplentes: { ...(previo.suplentes ?? {}) } });
-        if (!nuevo.sinClase && !nuevo.edFisica && Object.keys(nuevo.suplentes).length === 0) tx.delete(ref);
+        if (!nuevo.sinClase && !nuevo.edFisica && !nuevo.sinEdFisica && Object.keys(nuevo.suplentes).length === 0) tx.delete(ref);
         else tx.set(ref, { ...nuevo, fecha: fechaSel });
       });
       setError('');
@@ -348,11 +357,18 @@ export function PlantProvider({ children }) {
       return d;
     });
 
-  // Docente: marca (o desmarca) que ese día hay Ed. Física. Solo ese día aparece su checklist y se pueden ganar sus puntos.
+  // Docente: marca (o desmarca) que ese día hay Ed. Física. Los lunes y viernes ya la tienen: quitarla guarda `sinEdFisica`
+  // para esa fecha sola; volver a ponerla borra esa marca. En cualquier otro día se guarda `edFisica`.
   const marcarEdFisica = (fechaSel, activo) =>
     editarDia(fechaSel, (d) => {
-      if (activo) d.edFisica = true;
-      else delete d.edFisica;
+      const auto = crearDiasEdFisica([]).has(fechaSel);
+      if (activo) {
+        delete d.sinEdFisica;
+        if (!auto) d.edFisica = true;
+      } else {
+        delete d.edFisica;
+        if (auto) d.sinEdFisica = true;
+      }
       return d;
     });
 
@@ -467,7 +483,7 @@ export function PlantProvider({ children }) {
     desafioResuelto: actual.desafioAprobado === true, respuestaEnviada: actual.respuesta ?? null, rechazos: actual.rechazos ?? 0,
     ranking, puntosDesafio: PUNTOS_DESAFIO, puntosChecklist: PUNTOS_CHECKLIST, puntosCierre: PUNTOS_CIERRE, puntosEdFisica: PUNTOS_EDFISICA,
     iniciarTurno, cerrarTurno, toggleTarea, enviarRespuesta, guardarAsistencia, publicarTareasExtra,
-    authListo, esDocente, cuentaSinPermiso: !!user && !user.isAnonymous && !esDocente, error,
+    authListo, esDocente, esDocenteEF, cuentaSinPermiso: !!user && !user.isAnonymous && !esDocente && !esDocenteEF, error,
     desafioHoy, criterioDocente, publicarDesafio,
     semana, resumenSemana, premioSemana, historial, premios, publicarPremio, reiniciarPuntos,
     diaHoy, hoySinClase, suplentesHoy, jornadasSemana, bonosSemana, diasTodos, bonosTodos, sinClaseTodos, edFisicaTodos,

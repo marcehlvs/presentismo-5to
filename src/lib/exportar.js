@@ -1,5 +1,5 @@
 import { ALUMNOS, TURNOS } from '../data/mockData';
-import { CRITERIO_GANADOR, deIso, hoyISO, puntosDeJornada, resumenPorSemana } from './semanas';
+import { CRITERIO_GANADOR, crearDiasEdFisica, deIso, hoyISO, puntosDeJornada, resumenPorSemana } from './semanas';
 
 const DIAS = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
 const nombreEquipo = (id) => TURNOS.find((t) => t.id === id)?.nombre ?? id;
@@ -12,7 +12,7 @@ const vacioNull = (v) => (v === '' || v == null ? null : v);
 // Arma las hojas del libro a partir de lo que ya tiene cargado el panel docente (no consulta nada más)
 export function armarHojas({ jornadas, bonos, dias, premios, alumnosEn }) {
   const sinClase = new Set(dias.filter((d) => d.sinClase).map((d) => d.fecha));
-  const edFisica = new Set(dias.filter((d) => d.edFisica).map((d) => d.fecha));
+  const edFisica = crearDiasEdFisica(dias);
   // El líder de cada fecha (los líderes pueden cambiar con el tiempo); sin la función, rige la lista de mockData.js
   const lider = (id, fecha) => (alumnosEn && fecha ? alumnosEn(fecha) : ALUMNOS).find((a) => a.id === Number(id)) ?? liderBase(id);
   const suplenteDe = (fecha, jefeId) => dias.find((d) => d.fecha === fecha)?.suplentes?.[String(jefeId)];

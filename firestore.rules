@@ -4,11 +4,28 @@ service cloud.firestore {
 
     function signedIn() { return request.auth != null; }
 
-    // Docente: cuenta con email (no anónima) cuyo uid figura en /docentes (se crea a mano en la consola)
-    function esDocente() {
+    function docenteExiste() {
       return signedIn()
         && request.auth.token.firebase.sign_in_provider != 'anonymous'
         && exists(/databases/$(database)/documents/docentes/$(request.auth.uid));
+    }
+
+    // Docente de Ed. Física: su documento en /docentes tiene rol = 'edfisica'. Solo puede aprobar tareas ef_* (ver más abajo)
+    function esDocenteEF() {
+      return docenteExiste()
+        && get(/databases/$(database)/documents/docentes/$(request.auth.uid)).data.get('rol', '') == 'edfisica';
+    }
+
+    // Docente completo: figura en /docentes (se crea a mano en la consola) y no tiene el rol restringido de Ed. Física
+    function esDocente() {
+      return docenteExiste() && !esDocenteEF();
+    }
+
+    // El cambio de un mapa (declaradas, aprobadas, devoluciones) solo toca claves de Ed. Física
+    function soloTareasEF(campo) {
+      return !(campo in request.resource.data.diff(resource.data).affectedKeys())
+        || request.resource.data[campo].diff(resource.data.get(campo, {})).affectedKeys()
+             .hasOnly(['ef_salida', 'ef_equipo', 'ef_agua', 'ef_materiales', 'ef_devolucion', 'ef_regreso']);
     }
 
     // Lo que puede escribir un alumno: solo tareas declaradas y su respuesta
@@ -89,6 +106,13 @@ service cloud.firestore {
     match /turnos/{turnoId} {
       allow read: if signedIn();
       allow write: if esDocente();   // los alumnos nunca escriben puntos
+      // Ed. Física: solo puede sumar exactamente PUNTOS_EDFISICA (10) al aprobar su checklist
+      allow create: if esDocenteEF()
+        && request.resource.data.keys().hasOnly(['puntos'])
+        && request.resource.data.puntos == 10;
+      allow update: if esDocenteEF()
+        && request.resource.data.keys().hasOnly(['puntos'])
+        && request.resource.data.puntos == resource.data.puntos + 10;
     }
 
     match /jornadas/{docId} {
@@ -115,6 +139,15 @@ service cloud.firestore {
             || resource.data.get('aprobadas', {}).get('asistencia', false) == false);
 
       allow create, update, delete: if esDocente();
+
+      // Ed. Física: aprueba o rechaza solo tareas ef_*, y solo puede activar el premio de Ed. Física
+      allow update: if esDocenteEF()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['declaradas', 'aprobadas', 'devoluciones', 'premioEdFisica'])
+        && soloTareasEF('declaradas')
+        && soloTareasEF('aprobadas')
+        && soloTareasEF('devoluciones')
+        && (!('premioEdFisica' in request.resource.data.diff(resource.data).affectedKeys())
+            || request.resource.data.premioEdFisica == true);
     }
 
     match /{document=**} { allow read, write: if false; }

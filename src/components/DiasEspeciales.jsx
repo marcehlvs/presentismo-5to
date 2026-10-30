@@ -8,10 +8,10 @@ import { btn, campo } from './estilos';
 // Suplente del líder, días sin clase y días con Ed. Física, cargados por fecha
 export default function DiasEspeciales() {
   const {
-    fecha, diasTodos, historial, designarSuplente, marcarSinClase, marcarEdFisica, programarEdFisica, puntosEdFisica, alumnosEn,
+    fecha, diasTodos, historial, designarSuplente, marcarSinClase, marcarEdFisica, programarEdFisica, puntosEdFisica, alumnosEn, edFisicaTodos,
   } = usePlant();
   const [f, setF] = useState(fecha);
-  const [diaEF, setDiaEF] = useState('2');
+  const [diaEF, setDiaEF] = useState('3');
   const [hastaEF, setHastaEF] = useState(() => sumarDias(fecha, 56));
   const [msjEF, setMsjEF] = useState('');
   const nombreLider = (id, fechaDia) => alumnosEn(fechaDia).find((a) => a.id === Number(id))?.nombre ?? `Jefe ${id}`;
@@ -23,7 +23,7 @@ export default function DiasEspeciales() {
   const dia = diasTodos.find((d) => d.fecha === f);
   const suplenteActual = dia?.suplentes?.[lider] ?? '';
   const sinClase = !!dia?.sinClase;
-  const edFisica = !!dia?.edFisica;
+  const edFisica = !sinClase && edFisicaTodos.has(f);
 
   // Al cambiar la fecha, el líder por defecto es el de ese día de la semana
   useEffect(() => {
@@ -50,8 +50,10 @@ export default function DiasEspeciales() {
       .slice(0, 10),
     [diasTodos]
   );
+  // Fechas con Ed. Física que se cargaron a mano (los lunes y viernes ya vienen solos) y fechas quitadas
   const fechasEF = useMemo(() => diasTodos.filter((d) => d.edFisica).map((d) => d.fecha).sort(), [diasTodos]);
   const proximasEF = useMemo(() => fechasEF.filter((x) => x >= fecha).slice(0, 8), [fechasEF, fecha]);
+  const quitadasEF = useMemo(() => diasTodos.filter((d) => d.sinEdFisica && d.fecha >= fecha).map((d) => d.fecha).sort().slice(0, 8), [diasTodos, fecha]);
 
   const programar = async () => {
     setMsjEF('');
@@ -132,7 +134,7 @@ export default function DiasEspeciales() {
         <div className="p-3 rounded-md border-2 border-acero/20 space-y-3 md:col-span-2">
           <h3 className="font-display text-xl font-bold">Educación Física</h3>
           <p className="text-sm text-acero/70">
-            Se hace fuera del aula y tiene su propio checklist, que le toca al líder del día. Solo aparece los días que marques acá y suma {puntosEdFisica} puntos al equipo cuando se aprueba todo.
+            Se hace fuera del aula y tiene su propio checklist, que le toca al líder del día. Los lunes y viernes aparece solo; acá podés quitarla un día puntual (lluvia, feriado, profe ausente) o sumar otro día. Suma {puntosEdFisica} puntos al equipo cuando se aprueba todo.
             Los puntos de ese día no le dan ventaja a ningún equipo: el promedio de la semana se calcula sobre los puntos posibles.
           </p>
           <div className="flex flex-wrap items-center gap-2">
@@ -147,7 +149,7 @@ export default function DiasEspeciales() {
                 Hay Ed. Física el {f ? etiquetaDia(f) : 'día elegido'}
               </button>
             )}
-            {edFisica && <span className="text-sm font-semibold text-operativa">Ed. Física marcada para ese día ✓</span>}
+            {edFisica && <span className="text-sm font-semibold text-operativa">Hay Ed. Física ese día ✓</span>}
           </div>
 
           <div className="grid gap-3 sm:grid-cols-[1fr_1fr_auto] items-end">
@@ -166,9 +168,12 @@ export default function DiasEspeciales() {
           {msjEF && <p role="status" className="text-sm font-semibold text-operativa">{msjEF}</p>}
           <p className="text-sm">
             {proximasEF.length === 0
-              ? 'Todavía no hay próximas fechas con Ed. Física.'
-              : <>Próximas fechas con Ed. Física ({fechasEF.filter((x) => x >= fecha).length} en total): <b>{proximasEF.map(etiquetaDia).join(' · ')}</b></>}
+              ? 'No hay días extra marcados a mano (además de los lunes y viernes).'
+              : <>Días extra con Ed. Física ({fechasEF.filter((x) => x >= fecha).length} en total): <b>{proximasEF.map(etiquetaDia).join(' · ')}</b></>}
           </p>
+          {quitadasEF.length > 0 && (
+            <p className="text-sm">Lunes o viernes sin Ed. Física: <b>{quitadasEF.map(etiquetaDia).join(' · ')}</b></p>
+          )}
         </div>
       </div>
       {estado === 'ok' && <p role="status" className="mt-3 text-operativa font-semibold">Guardado ✓</p>}

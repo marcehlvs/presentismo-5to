@@ -1,5 +1,7 @@
 # Operación: Jefe de Planta
 
+> 📋 ¿Sos docente? Mirá la [guía de funcionalidades para docentes](README-DOCENTES.md).
+
 ```bash
 npm install
 npm run dev
@@ -53,7 +55,7 @@ Después de actualizar este código: `npm install` y volvé a publicar las regla
 Ed. Física se hace fuera del aula y tiene su propio checklist (salida ordenada, ropa y calzado deportivo, botellas de agua, materiales listos, materiales devueltos y regreso ordenado). Se gestiona así:
 - **Qué día hay:** en "Suplentes, días sin clase y Ed. Física" el docente marca la fecha, o repite "todos los martes hasta tal fecha" (cada fecha queda cargada por separado, así se puede quitar una sola por lluvia, feriado o profe ausente). Los días sin marca no tienen checklist de Ed. Física.
 - **Quién lo hace:** el líder del día, en la misma jornada. Los alumnos ven un bloque "Educación Física" entre el desafío y el cierre; el docente lo aprueba en el mismo bloque del panel. Si lo aprueba el profe de Ed. Física, hay que crearle un usuario docente (paso 3 y 4 de Firebase).
-- **Puntos:** 10 al equipo cuando se aprueba todo (`PUNTOS_EDFISICA` en `src/lib/semanas.js`). Para que el equipo al que le toca Ed. Física no tenga ventaja, el promedio semanal se calcula sobre los puntos posibles (es "puntos por jornada común", hasta 40). Con `CRITERIO_GANADOR = 'total'` esa ventaja existe.
+- **Puntos:** 10 al equipo cuando se aprueba todo (`PUNTOS_EDFISICA` en `src/lib/semanas.js`). Para que el equipo al que le toca Ed. Física no tenga ventaja, el promedio semanal se calcula sobre los puntos posibles (es "puntos por jornada común", hasta 35). Con `CRITERIO_GANADOR = 'total'` esa ventaja existe.
 - **Tareas propias:** las tareas extra pueden asignarse al momento "Educación Física" y solo aparecen ese día.
 - Las reglas de Firestore cambiaron (tareas `ef_*` y `config`): volvé a publicarlas con `firebase deploy --only firestore:rules`.
 
