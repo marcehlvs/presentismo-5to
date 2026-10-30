@@ -74,7 +74,7 @@ Se entra desde *Acceso docente* con correo y contraseña. El panel permite:
 - **Evolución semanal** por equipo (promedio, puntos de la semana o acumulado).
 - **Resumen semanal para imprimir:** posiciones, detalle por día, asistencia, bonos y días sin clase, en una hoja A4 lista para imprimir o guardar como PDF.
 - **Exportar a planilla (.xlsx)** con las hojas *Jornadas*, *Semanas*, *Bonos* y *Días especiales*.
-- **Historial** de semanas anteriores y opción de **volver a cero** (con la posibilidad de conservar o borrar el historial).
+- **Historial** de semanas anteriores. **Volver a cero** (solo la cuenta superadmin) descarga primero una copia en Excel y después borra puntos, historial, bonos y el desafío y las tareas extra de hoy.
 
 ---
 

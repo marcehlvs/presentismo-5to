@@ -6,6 +6,8 @@ export const PUNTOS_DESAFIO = 15;
 // Ed. Física: puntos extra del día. Hay Ed. Física los días de DIAS_EDFISICA_AUTO (desde EDFISICA_AUTO_DESDE) y los que el docente
 // marque a mano; un día se puede quitar (lluvia, feriado, profe ausente) desde "Días especiales".
 export const PUNTOS_EDFISICA = 10;
+// Largo máximo del texto de una tarea extra (antes 60: cortaba las preguntas)
+export const TAREA_EXTRA_MAX = 200;
 export const DIAS_EDFISICA_AUTO = [1, 5]; // 0 = domingo … 6 = sábado: lunes y viernes
 // Las jornadas anteriores a esta fecha no cambian (no tenían Ed. Física automática)
 export const EDFISICA_AUTO_DESDE = '2026-10-30';

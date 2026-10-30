@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { usePlant } from '../context/PlantContext';
 import { IDS_EXTRA, MOMENTOS, TURNOS } from '../data/mockData';
-import { CRITERIO_GANADOR, etiquetaDia, etiquetaSemana, lunesDe, puntosDeJornada, resumenPorSemana } from '../lib/semanas';
+import { CRITERIO_GANADOR, TAREA_EXTRA_MAX, etiquetaDia, etiquetaSemana, lunesDe, puntosDeJornada, resumenPorSemana } from '../lib/semanas';
 import { exportarHistorial } from '../lib/exportar';
 import Leaderboard from './Leaderboard';
 import AvisoSinClase from './AvisoSinClase';
@@ -99,9 +99,9 @@ function FormularioTareasExtra() {
       <form onSubmit={guardar} className="space-y-2">
         {items.map((x, i) => (
           <div key={x.id} className="flex flex-col sm:flex-row gap-2">
-            <input
-              value={x.titulo} onChange={(e) => cambiar(i, 'titulo', e.target.value)} maxLength={60}
-              placeholder={`Tarea extra ${i + 1}`} aria-label={`Tarea extra ${i + 1}`} className={campo}
+            <textarea
+              value={x.titulo} onChange={(e) => cambiar(i, 'titulo', e.target.value)} maxLength={TAREA_EXTRA_MAX} rows={2}
+              placeholder={`Tarea extra ${i + 1}`} aria-label={`Tarea extra ${i + 1}`} className={`${campo} resize-y`}
             />
             <select value={x.momento} onChange={(e) => cambiar(i, 'momento', e.target.value)} aria-label="Momento" className={`${campo} sm:w-48`}>
               <option value="apertura">{MOMENTOS.apertura}</option>
@@ -257,17 +257,28 @@ function Historial() {
 }
 
 function ReiniciarPuntos() {
-  const { reiniciarPuntos } = usePlant();
+  const { reiniciarPuntos, esSuperadmin, historial, bonosTodos, diasTodos, premios, alumnosEn } = usePlant();
   const [abierto, setAbierto] = useState(false);
-  const [borrar, setBorrar] = useState(false);
+  const [sinCopia, setSinCopia] = useState(false); // reiniciar aunque falle la descarga de la copia
+  const [falloCopia, setFalloCopia] = useState(false);
   const [texto, setTexto] = useState('');
   const [trabajando, setTrabajando] = useState(false);
   const [hecho, setHecho] = useState(false);
 
-  const cerrar = () => { setAbierto(false); setBorrar(false); setTexto(''); };
+  if (!esSuperadmin) return null; // solo la cuenta superadmin (docentes/{uid}.rol = 'superadmin')
+
+  const cerrar = () => { setAbierto(false); setTexto(''); setSinCopia(false); setFalloCopia(false); };
   const confirmar = async () => {
     setTrabajando(true);
-    const ok = await reiniciarPuntos(borrar);
+    setFalloCopia(false);
+    // Antes de borrar, se descarga una copia en Excel de todo el historial; si falla, no se borra nada (salvo que se tilde la casilla)
+    try {
+      await exportarHistorial({ jornadas: historial, bonos: bonosTodos, dias: diasTodos, premios, alumnosEn });
+    } catch (e) {
+      console.error('[Exportar]', e);
+      if (!sinCopia) { setFalloCopia(true); setTrabajando(false); return; }
+    }
+    const ok = await reiniciarPuntos();
     setTrabajando(false);
     setHecho(ok);
     if (ok) cerrar();
@@ -278,17 +289,25 @@ function ReiniciarPuntos() {
       <h2 className="font-display text-3xl font-bold mb-1">Volver a cero</h2>
       {!abierto ? (
         <>
-          <p className="text-sm text-acero/70 mb-3">Deja en 0 los puntos de los cinco equipos.</p>
+          <p className="text-sm text-acero/70 mb-3">Reinicia todo: puntos de los cinco equipos, checklists, asistencia, bonos, y el desafío y las tareas extra de hoy. Antes descarga una copia en Excel.</p>
           <button onClick={() => { setAbierto(true); setHecho(false); }} className={`${btn} text-alarma border-alarma`}>Volver a cero…</button>
-          {hecho && <p role="status" className="mt-2 text-operativa font-semibold">Puntos reiniciados ✓</p>}
+          {hecho && <p role="status" className="mt-2 text-operativa font-semibold">Todo reiniciado ✓</p>}
         </>
       ) : (
         <div role="alertdialog" aria-labelledby="confirmar-titulo" className="space-y-3">
-          <p id="confirmar-titulo" className="font-semibold">¿Estás seguro? Los puntos de los cinco equipos vuelven a 0 y no se puede deshacer.</p>
-          <label className="flex items-start gap-2 text-sm">
-            <input type="checkbox" checked={borrar} onChange={(e) => setBorrar(e.target.checked)} className="mt-1" />
-            <span>Borrar también el historial: checklists, asistencia, puntos y bonos de todas las fechas, incluida la de hoy. Sin esta casilla, el historial y el ranking semanal se conservan. Los días sin clase y los suplentes cargados no se borran.</span>
-          </label>
+          <p id="confirmar-titulo" className="font-semibold">
+            ¿Estás seguro? Se borran los puntos de los cinco equipos, todo el historial (checklists, asistencia, respuestas, bonos de todas las fechas), el desafío de hoy y las tareas extra de hoy. No se puede deshacer.
+          </p>
+          <p className="text-sm">Antes de borrar se descarga una copia en Excel del historial. No se borran: los líderes, los días sin clase, suplentes y Ed. Física, ni los premios de la semana.</p>
+          {falloCopia && (
+            <div role="alert" className="text-alarma text-sm font-semibold space-y-2">
+              <p>No se pudo descargar la copia, así que no se borró nada. Probá de nuevo, o tildá la casilla para reiniciar igual.</p>
+              <label className="flex items-start gap-2 font-normal text-acero">
+                <input type="checkbox" checked={sinCopia} onChange={(e) => setSinCopia(e.target.checked)} className="mt-1" />
+                <span>Reiniciar aunque no haya copia de seguridad</span>
+              </label>
+            </div>
+          )}
           <label className="block text-sm">
             Escribí <b>REINICIAR</b> para confirmar
             <input value={texto} onChange={(e) => setTexto(e.target.value)} autoComplete="off" className={`${campo} mt-1`} />

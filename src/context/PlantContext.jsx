@@ -6,7 +6,7 @@ import {
 import { auth, db } from '../firebase';
 import { ALUMNOS, TURNOS, TAREAS, TAREAS_EDFISICA, PUNTAJES_INICIALES, getJornada, jefeDelDia, IDS_EXTRA } from '../data/mockData';
 import {
-  BONO_MAXIMO, PUNTOS_CHECKLIST, PUNTOS_CIERRE, PUNTOS_DESAFIO, PUNTOS_EDFISICA, crearDiasEdFisica, deIso, hoyISO, lunesDe, resumenTurnos, sumarDias,
+  BONO_MAXIMO, PUNTOS_CHECKLIST, PUNTOS_CIERRE, PUNTOS_DESAFIO, PUNTOS_EDFISICA, TAREA_EXTRA_MAX, crearDiasEdFisica, deIso, hoyISO, lunesDe, resumenTurnos, sumarDias,
 } from '../lib/semanas';
 import { alumnosEn, conVersion, sinVersion, validarLideres } from '../lib/lideres';
 
@@ -72,6 +72,7 @@ export function PlantProvider({ children }) {
   const [fecha, setFecha] = useState(hoyISO);
   const [user, setUser] = useState(null);
   const [esDocente, setEsDocente] = useState(false);
+  const [esSuperadmin, setEsSuperadmin] = useState(false); // docentes/{uid}.rol = 'superadmin': docente completo + "Volver a cero"
   const [esDocenteEF, setEsDocenteEF] = useState(false); // cuenta docente de Ed. Física: solo aprueba el bloque de Ed. Física
   const [authListo, setAuthListo] = useState(false);
   const [error, setError] = useState('');
@@ -105,21 +106,25 @@ export function PlantProvider({ children }) {
           setUser(null);
           setEsDocente(false);
           setEsDocenteEF(false);
+          setEsSuperadmin(false);
           try { await signInAnonymously(auth); } catch (e) { setError(mensajeError(e)); setAuthListo(true); }
           return;
         }
         let docente = false;
         let soloEF = false;
+        let sup = false;
         if (!u.isAnonymous) {
           try {
             const s = await getDoc(doc(db, 'docentes', u.uid));
             // docentes/{uid} con rol = 'edfisica': solo gestiona Ed. Física; sin ese campo, docente completo
             soloEF = s.exists() && s.data().rol === 'edfisica';
             docente = s.exists() && !soloEF;
-          } catch { docente = false; soloEF = false; }
+            sup = docente && s.data().rol === 'superadmin';
+          } catch { docente = false; soloEF = false; sup = false; }
         }
         setEsDocente(docente);
         setEsDocenteEF(soloEF);
+        setEsSuperadmin(sup);
         setUser(u);
         setAuthListo(true);
       }),
@@ -299,7 +304,7 @@ export function PlantProvider({ children }) {
   const publicarTareasExtra = async (items) => {
     const limpios = items
       .filter((x) => IDS_EXTRA.includes(x.id) && x.titulo.trim())
-      .map((x) => ({ id: x.id, titulo: x.titulo.trim().slice(0, 60), momento: momentoExtra(x.momento) }));
+      .map((x) => ({ id: x.id, titulo: x.titulo.trim().slice(0, TAREA_EXTRA_MAX), momento: momentoExtra(x.momento) }));
     try {
       await setDoc(doc(db, 'tareas_extra', fecha), { fecha, items: limpios });
       setError('');
@@ -448,22 +453,25 @@ export function PlantProvider({ children }) {
       sumar(tx, t, -snap.data().puntos);
     }).catch((e) => setError(mensajeError(e)));
 
-  // Docente: vuelve los puntos a 0; opcionalmente borra también todo el historial (jornadas y bonos)
-  const reiniciarPuntos = async (borrarHistorial) => {
+  // Superadmin: vuelve TODO a cero. Puntos de los equipos, jornadas (checklists, asistencia, respuestas), bonos, y el desafío
+  // y las tareas extra de hoy. No toca la configuración: líderes, días sin clase / suplentes / Ed. Física, premios de la semana.
+  const reiniciarPuntos = async () => {
+    if (!esSuperadmin) return false;
     try {
       const lote = writeBatch(db);
       TURNOS.forEach((t) => lote.set(doc(db, 'turnos', t.id), { puntos: 0 }));
+      lote.delete(doc(db, 'desafios', fecha));
+      lote.delete(doc(db, 'desafios_docente', fecha));
+      lote.delete(doc(db, 'tareas_extra', fecha));
       await lote.commit();
-      if (borrarHistorial) {
-        const docs = [
-          ...(await getDocs(collection(db, 'jornadas'))).docs,
-          ...(await getDocs(collection(db, 'bonos'))).docs,
-        ];
-        for (let i = 0; i < docs.length; i += 400) {
-          const b = writeBatch(db);
-          docs.slice(i, i + 400).forEach((d) => b.delete(d.ref));
-          await b.commit();
-        }
+      const docs = [
+        ...(await getDocs(collection(db, 'jornadas'))).docs,
+        ...(await getDocs(collection(db, 'bonos'))).docs,
+      ];
+      for (let i = 0; i < docs.length; i += 400) {
+        const b = writeBatch(db);
+        docs.slice(i, i + 400).forEach((d) => b.delete(d.ref));
+        await b.commit();
       }
       setError('');
       return true;
@@ -483,7 +491,7 @@ export function PlantProvider({ children }) {
     desafioResuelto: actual.desafioAprobado === true, respuestaEnviada: actual.respuesta ?? null, rechazos: actual.rechazos ?? 0,
     ranking, puntosDesafio: PUNTOS_DESAFIO, puntosChecklist: PUNTOS_CHECKLIST, puntosCierre: PUNTOS_CIERRE, puntosEdFisica: PUNTOS_EDFISICA,
     iniciarTurno, cerrarTurno, toggleTarea, enviarRespuesta, guardarAsistencia, publicarTareasExtra,
-    authListo, esDocente, esDocenteEF, cuentaSinPermiso: !!user && !user.isAnonymous && !esDocente && !esDocenteEF, error,
+    authListo, esDocente, esSuperadmin, esDocenteEF, cuentaSinPermiso: !!user && !user.isAnonymous && !esDocente && !esDocenteEF, error,
     desafioHoy, criterioDocente, publicarDesafio,
     semana, resumenSemana, premioSemana, historial, premios, publicarPremio, reiniciarPuntos,
     diaHoy, hoySinClase, suplentesHoy, jornadasSemana, bonosSemana, diasTodos, bonosTodos, sinClaseTodos, edFisicaTodos,
