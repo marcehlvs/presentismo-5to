@@ -2,15 +2,17 @@ import { useState } from 'react';
 import { Factory, HardHat } from 'lucide-react';
 import { usePlant } from '../context/PlantContext';
 import { equipoDe } from '../data/mockData';
+import AvisoSinClase from './AvisoSinClase';
 
 export default function Login() {
-  const { alumnos, iniciarTurno, jefeSugerido } = usePlant();
+  const { alumnos, iniciarTurno, jefeSugerido, hoySinClase, suplentesHoy } = usePlant();
   const [id, setId] = useState(jefeSugerido ? String(jefeSugerido.id) : '');
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (id) iniciarTurno(Number(id));
+    if (id && !hoySinClase) iniciarTurno(Number(id));
   };
+  const suplenteSugerido = jefeSugerido ? suplentesHoy[String(jefeSugerido.id)] : null;
 
   return (
     <main className="min-h-screen flex items-center justify-center p-4">
@@ -21,6 +23,8 @@ export default function Login() {
             <Factory className="size-10 text-seguridad shrink-0" strokeWidth={2.25} aria-hidden="true" />
             <h1 className="font-display text-4xl font-bold leading-none">Operación: Jefe de Planta</h1>
           </div>
+
+          <AvisoSinClase />
 
           <div className="space-y-2">
             <label htmlFor="alumno" className="block font-medium">
@@ -34,22 +38,31 @@ export default function Login() {
             >
               <option value="">Elegí tu nombre</option>
               {alumnos.map((a) => (
-                <option key={a.id} value={a.id}>{a.dia} · {a.nombre} · {equipoDe(a)?.nombre}</option>
+                <option key={a.id} value={a.id}>
+                  {suplentesHoy[String(a.id)]
+                    ? `${a.dia} · ${suplentesHoy[String(a.id)]} (suplente de ${a.nombre}) · ${equipoDe(a)?.nombre}`
+                    : `${a.dia} · ${a.nombre} · ${equipoDe(a)?.nombre}`}
+                </option>
               ))}
             </select>
-            {jefeSugerido && (
-              <p className="text-sm text-acero/70">Hoy le toca a {jefeSugerido.nombre}.</p>
+            {!hoySinClase && jefeSugerido && (
+              <p className="text-sm text-acero/70">
+                {suplenteSugerido
+                  ? `Hoy ${jefeSugerido.nombre} no está: lo reemplaza ${suplenteSugerido}. Los puntos van al ${equipoDe(jefeSugerido)?.nombre}.`
+                  : `Hoy le toca a ${jefeSugerido.nombre}.`}
+              </p>
             )}
           </div>
 
           <button
             type="submit"
-            disabled={!id}
+            disabled={!id || hoySinClase}
             className="w-full flex items-center justify-center gap-2 bg-seguridad text-acero font-display text-2xl font-bold py-2.5 rounded-md border-2 border-acero transition enabled:hover:bg-acero enabled:hover:text-seguridad disabled:opacity-40 disabled:cursor-not-allowed focus:outline-none focus-visible:ring-4 focus-visible:ring-seguridad/60"
           >
             <HardHat className="size-6" aria-hidden="true" />
             Tomar el mando
           </button>
+          <a href="/pantalla" className="block text-center text-sm underline text-acero/70 hover:text-acero">Abrir modo pantalla</a>
         </form>
       </div>
     </main>

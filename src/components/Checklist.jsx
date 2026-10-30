@@ -3,11 +3,14 @@ import {
   Timer, Wind, MonitorCheck, Presentation, Users, Sparkles, Power, Lightbulb, ClipboardList, Cog, CircleCheck,
 } from 'lucide-react';
 import { usePlant } from '../context/PlantContext';
+import Devolucion from './Devolucion';
 
 const ICONOS = { Timer, Wind, MonitorCheck, Presentation, Users, Sparkles, Power, Lightbulb, ClipboardList };
 
-const estilo = (aprobada, hecha) =>
-  aprobada ? 'border-operativa bg-operativa/10' : hecha ? 'border-seguridad bg-seguridad/10' : 'border-acero/20';
+const estilo = (aprobada, hecha, rechazada = false) =>
+  aprobada ? 'border-operativa bg-operativa/10' : hecha ? 'border-seguridad bg-seguridad/10' : rechazada ? 'border-alarma bg-alarma/5' : 'border-acero/20';
+
+const fueRechazada = (dev, hecha, aprobada) => dev?.resultado === 'rechazada' && !hecha && !aprobada;
 
 function Casilla({ aprobada, hecha }) {
   return (
@@ -24,7 +27,7 @@ function Casilla({ aprobada, hecha }) {
 
 // Solo cantidades: no se registran nombres
 function FilaAsistencia({ t }) {
-  const { asistencia, hechas, aprobadas, guardarAsistencia } = usePlant();
+  const { asistencia, hechas, aprobadas, guardarAsistencia, devoluciones } = usePlant();
   const [presentes, setPresentes] = useState('');
   const [tardes, setTardes] = useState('');
   const aprobada = !!aprobadas[t.id];
@@ -45,7 +48,7 @@ function FilaAsistencia({ t }) {
   const campo = 'w-24 border-2 border-acero rounded-md px-3 py-2 focus:outline-none focus:ring-4 focus:ring-seguridad/60 disabled:bg-hormigon';
 
   return (
-    <li className={`p-3 rounded-md border-2 ${estilo(aprobada, hecha)}`}>
+    <li className={`p-3 rounded-md border-2 ${estilo(aprobada, hecha, fueRechazada(devoluciones[t.id], hecha, aprobada))}`}>
       <div className="flex items-center gap-3">
         <Casilla aprobada={aprobada} hecha={hecha} />
         <Users className="size-6 shrink-0" aria-hidden="true" />
@@ -79,12 +82,13 @@ function FilaAsistencia({ t }) {
       {(hecha || aprobada) && (
         <p className="mt-2 text-sm font-medium sm:pl-10">{aprobada ? 'Aprobada por el docente' : 'Esperando aprobación del docente'}</p>
       )}
+      <div className="sm:pl-10"><Devolucion dev={devoluciones[t.id]} hecha={hecha} aprobada={aprobada} /></div>
     </li>
   );
 }
 
 export default function Checklist({ momento, titulo }) {
-  const { tareas, hechas, aprobadas, toggleTarea, plantaOperativa, plantaCerrada, puntosChecklist, puntosCierre } = usePlant();
+  const { tareas, hechas, aprobadas, toggleTarea, plantaOperativa, plantaCerrada, puntosChecklist, puntosCierre, devoluciones } = usePlant();
   const lista = tareas.filter((t) => t.momento === momento);
   const completadas = lista.filter((t) => aprobadas[t.id]).length;
   const completo = momento === 'cierre' ? plantaCerrada : plantaOperativa;
@@ -110,7 +114,7 @@ export default function Checklist({ momento, titulo }) {
           return (
             <li key={t.id}>
               <label
-                className={`flex items-center gap-3 p-3 rounded-md border-2 cursor-pointer transition has-[:focus-visible]:ring-4 has-[:focus-visible]:ring-seguridad/60 ${estilo(aprobada, hecha)} ${
+                className={`flex items-center gap-3 p-3 rounded-md border-2 cursor-pointer transition has-[:focus-visible]:ring-4 has-[:focus-visible]:ring-seguridad/60 ${estilo(aprobada, hecha, fueRechazada(devoluciones[t.id], hecha, aprobada))} ${
                   !aprobada && !hecha ? 'hover:border-acero' : ''
                 }`}
               >
@@ -125,6 +129,7 @@ export default function Checklist({ momento, titulo }) {
                       {aprobada ? 'Aprobada por el docente' : 'Esperando aprobación del docente'}
                     </span>
                   )}
+                  <Devolucion dev={devoluciones[t.id]} hecha={hecha} aprobada={aprobada} />
                 </span>
               </label>
             </li>

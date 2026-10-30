@@ -1,11 +1,16 @@
 import { useEffect, useMemo, useState } from 'react';
 import { usePlant } from '../context/PlantContext';
-import { ALUMNOS, IDS_EXTRA, MOMENTOS } from '../data/mockData';
-import { CRITERIO_GANADOR, etiquetaDia, etiquetaSemana, lunesDe, puntosDeJornada, resumenTurnos } from '../lib/semanas';
+import { ALUMNOS, IDS_EXTRA, MOMENTOS, TURNOS } from '../data/mockData';
+import { CRITERIO_GANADOR, etiquetaDia, etiquetaSemana, lunesDe, puntosDeJornada, resumenPorSemana } from '../lib/semanas';
+import { exportarHistorial } from '../lib/exportar';
 import Leaderboard from './Leaderboard';
-
-const btn = 'px-3 py-1.5 rounded-md border-2 border-acero font-semibold text-sm disabled:opacity-40 disabled:cursor-not-allowed';
-const campo = 'w-full border-2 border-acero rounded-md px-3 py-2 focus:outline-none focus:ring-4 focus:ring-seguridad/60';
+import AvisoSinClase from './AvisoSinClase';
+import FilaTareaDocente from './FilaTareaDocente';
+import RevisionDesafio from './RevisionDesafio';
+import DiasEspeciales from './DiasEspeciales';
+import Bonos from './Bonos';
+import EvolucionSemanal from './EvolucionSemanal';
+import { btn, campo } from './estilos';
 
 function FormularioDesafio() {
   const { desafioHoy, criterioDocente, publicarDesafio } = usePlant();
@@ -140,29 +145,48 @@ function FormularioPremio() {
 }
 
 function Historial() {
-  const { historial, premios } = usePlant();
+  const { historial, premios, bonosTodos, diasTodos, sinClaseTodos } = usePlant();
+  const [exportando, setExportando] = useState(false);
+  const [falloExport, setFalloExport] = useState(false);
 
-  const semanas = useMemo(() => {
-    const porSemana = {};
-    historial.forEach((j) => {
-      const l = lunesDe(j.fecha);
-      porSemana[l] = [...(porSemana[l] ?? []), j];
-    });
-    return Object.keys(porSemana)
-      .sort()
-      .reverse()
-      .map((lunes) => {
-        const jornadas = [...porSemana[lunes]].sort((a, b) => a.fecha.localeCompare(b.fecha));
-        return { lunes, jornadas, ...resumenTurnos(jornadas), premio: premios.find((p) => p.id === lunes)?.texto };
-      });
-  }, [historial, premios]);
+  const semanas = useMemo(
+    () =>
+      resumenPorSemana(historial, bonosTodos, sinClaseTodos)
+        .reverse()
+        .map((s) => ({
+          ...s,
+          jornadas: historial.filter((j) => lunesDe(j.fecha) === s.lunes).sort((a, b) => a.fecha.localeCompare(b.fecha)),
+          bonos: bonosTodos.filter((b) => lunesDe(b.fecha) === s.lunes).sort((a, b) => a.fecha.localeCompare(b.fecha)),
+          dias: diasTodos.filter((d) => lunesDe(d.fecha) === s.lunes).sort((a, b) => a.fecha.localeCompare(b.fecha)),
+          premio: premios.find((p) => p.id === s.lunes)?.texto,
+        })),
+    [historial, premios, bonosTodos, diasTodos, sinClaseTodos]
+  );
+
+  const exportar = async () => {
+    setExportando(true);
+    setFalloExport(false);
+    try {
+      await exportarHistorial({ jornadas: historial, bonos: bonosTodos, dias: diasTodos, premios });
+    } catch (e) {
+      console.error('[Exportar]', e);
+      setFalloExport(true);
+    }
+    setExportando(false);
+  };
 
   const th = 'text-left font-semibold py-1 pr-3';
   const td = 'py-1 pr-3 tabular-nums';
 
   return (
     <section className="bg-white border-2 border-acero rounded-lg p-5">
-      <h2 className="font-display text-3xl font-bold mb-3">Historial semanal</h2>
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+        <h2 className="font-display text-3xl font-bold">Historial semanal</h2>
+        <button onClick={exportar} disabled={exportando || semanas.length === 0} className={`${btn} bg-acero text-seguridad`}>
+          {exportando ? 'Preparando planilla…' : 'Exportar a planilla (.xlsx)'}
+        </button>
+      </div>
+      {falloExport && <p role="alert" className="mb-3 text-alarma font-semibold">No se pudo generar la planilla. Probá de nuevo.</p>}
       {semanas.length === 0 && <p>Todavía no hay jornadas registradas.</p>}
       <div className="space-y-2">
         {semanas.map((s) => (
@@ -172,33 +196,52 @@ function Historial() {
             </summary>
             <div className="p-3 pt-0 space-y-4">
               {s.premio && <p>Premio: <b>{s.premio}</b></p>}
+              {s.dias.some((d) => d.sinClase) && (
+                <p className="text-sm">
+                  Sin clase: {s.dias.filter((d) => d.sinClase).map((d) => `${etiquetaDia(d.fecha)}${d.motivo ? ` (${d.motivo})` : ''}`).join(', ')}. No cuentan para el promedio.
+                </p>
+              )}
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
-                  <thead><tr><th className={th}>Equipo</th><th className={th}>Puntos</th><th className={th}>Jornadas</th><th className={th}>Promedio</th></tr></thead>
+                  <thead><tr><th className={th}>Equipo</th><th className={th}>Puntos</th><th className={th}>Bonos</th><th className={th}>Jornadas</th><th className={th}>Promedio</th></tr></thead>
                   <tbody>
                     {s.lista.map((t) => (
-                      <tr key={t.id}><td className={td}>{t.nombre}</td><td className={td}>{t.puntos}</td><td className={td}>{t.jornadas}</td><td className={td}>{t.promedio.toFixed(1)}</td></tr>
+                      <tr key={t.id}><td className={td}>{t.nombre}</td><td className={td}>{t.puntos}</td><td className={td}>{t.bonos}</td><td className={td}>{t.jornadas}</td><td className={td}>{t.promedio.toFixed(1)}</td></tr>
                     ))}
                   </tbody>
                 </table>
                 <p className="mt-1 text-xs text-acero/60">
-                  {CRITERIO_GANADOR === 'promedio' ? 'El ganador se define por promedio de puntos por jornada.' : 'El ganador se define por puntos totales.'}
+                  {CRITERIO_GANADOR === 'promedio' ? 'El ganador se define por promedio de puntos por jornada (los puntos incluyen los bonos).' : 'El ganador se define por puntos totales (los puntos incluyen los bonos).'}
                 </p>
               </div>
+              {s.bonos.length > 0 && (
+                <ul className="text-sm space-y-0.5">
+                  {s.bonos.map((b) => (
+                    <li key={b.id}><b className="tabular-nums">+{b.puntos}</b> {TURNOS.find((t) => t.id === b.turnoId)?.nombre} · {b.motivo} · {etiquetaDia(b.fecha)}</li>
+                  ))}
+                </ul>
+              )}
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead><tr><th className={th}>Día</th><th className={th}>Jefe</th><th className={th}>Puntos</th><th className={th}>Presentes</th><th className={th}>Tarde</th><th className={th}>Tareas ok</th></tr></thead>
                   <tbody>
-                    {s.jornadas.map((j) => (
-                      <tr key={j.id}>
-                        <td className={td}>{etiquetaDia(j.fecha)}</td>
-                        <td className={td}>{ALUMNOS.find((a) => a.id === j.jefeId)?.nombre ?? j.jefeId}</td>
-                        <td className={td}>{puntosDeJornada(j)}</td>
-                        <td className={td}>{j.asistencia?.presentes ?? '–'}</td>
-                        <td className={td}>{j.asistencia?.tardes ?? '–'}</td>
-                        <td className={td}>{Object.values(j.aprobadas ?? {}).filter(Boolean).length}</td>
-                      </tr>
-                    ))}
+                    {s.jornadas.map((j) => {
+                      const suplente = s.dias.find((d) => d.fecha === j.fecha)?.suplentes?.[String(j.jefeId)];
+                      const sinClase = sinClaseTodos.has(j.fecha);
+                      return (
+                        <tr key={j.id}>
+                          <td className={td}>{etiquetaDia(j.fecha)}</td>
+                          <td className={td}>
+                            {ALUMNOS.find((a) => a.id === j.jefeId)?.nombre ?? j.jefeId}
+                            {suplente && <span className="text-acero/70"> · suplente: {suplente}</span>}
+                          </td>
+                          <td className={td}>{sinClase ? 'sin clase' : puntosDeJornada(j)}</td>
+                          <td className={td}>{j.asistencia?.presentes ?? '–'}</td>
+                          <td className={td}>{j.asistencia?.tardes ?? '–'}</td>
+                          <td className={td}>{Object.values(j.aprobadas ?? {}).filter(Boolean).length}</td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -241,7 +284,7 @@ function ReiniciarPuntos() {
           <p id="confirmar-titulo" className="font-semibold">¿Estás seguro? Los puntos de los cinco equipos vuelven a 0 y no se puede deshacer.</p>
           <label className="flex items-start gap-2 text-sm">
             <input type="checkbox" checked={borrar} onChange={(e) => setBorrar(e.target.checked)} className="mt-1" />
-            <span>Borrar también el historial: checklists, asistencia y puntos de todas las fechas, incluida la de hoy. Sin esta casilla, el historial y el ranking semanal se conservan.</span>
+            <span>Borrar también el historial: checklists, asistencia, puntos y bonos de todas las fechas, incluida la de hoy. Sin esta casilla, el historial y el ranking semanal se conservan. Los días sin clase y los suplentes cargados no se borran.</span>
           </label>
           <label className="block text-sm">
             Escribí <b>REINICIAR</b> para confirmar
@@ -263,10 +306,7 @@ function ReiniciarPuntos() {
 }
 
 export default function PanelDocente() {
-  const {
-    jornadasHoy, alumnos, tareas, aprobarTarea, aprobarDesafio, rechazarDesafio, logoutDocente, jornada, error,
-    desafioHoy, criterioDocente,
-  } = usePlant();
+  const { jornadasHoy, alumnos, tareas, logoutDocente, jornada, error, suplentesHoy } = usePlant();
 
   return (
     <div className="min-h-screen">
@@ -277,72 +317,50 @@ export default function PanelDocente() {
             <p className="font-display text-3xl font-bold leading-none">Panel docente</p>
             <p className="text-white/75 mt-1">{jornada.diaNombre}</p>
           </div>
-          <button onClick={logoutDocente} className="px-3 py-2 rounded-md border border-white/40 hover:bg-white/10">Cerrar sesión</button>
+          <div className="flex items-center gap-2">
+            <a href="/pantalla" className="px-3 py-2 rounded-md border border-white/40 hover:bg-white/10">Modo pantalla</a>
+            <button onClick={logoutDocente} className="px-3 py-2 rounded-md border border-white/40 hover:bg-white/10">Cerrar sesión</button>
+          </div>
         </div>
       </header>
 
       <main className="max-w-6xl mx-auto px-4 py-6 grid gap-6 lg:grid-cols-[1fr_360px] items-start">
         <div className="space-y-6">
           {error && <p role="alert" className="text-alarma font-semibold">{error}</p>}
+          <AvisoSinClase />
           <FormularioDesafio />
           <FormularioTareasExtra />
           <FormularioPremio />
+          <DiasEspeciales />
+          <Bonos />
           {jornadasHoy.length === 0 && (
             <p className="bg-white border-2 border-acero rounded-lg p-5">Todavía no hay actividad de Jefes de Planta hoy.</p>
           )}
           {jornadasHoy.map((j) => {
             const alumno = alumnos.find((a) => a.id === j.jefeId);
-            const ap = j.aprobadas ?? {};
-            const dec = j.declaradas ?? {};
+            const suplente = suplentesHoy[String(j.jefeId)];
             return (
               <section key={j.id} className="bg-white border-2 border-acero rounded-lg p-5">
-                <h2 className="font-display text-3xl font-bold mb-3">{alumno?.nombre ?? `Jefe ${j.jefeId}`}</h2>
+                <h2 className="font-display text-3xl font-bold mb-3">
+                  {alumno?.nombre ?? `Jefe ${j.jefeId}`}
+                  {suplente && <span className="block font-sans text-base font-medium text-acero/70">Hoy lo reemplaza {suplente}. Los puntos van al equipo del líder.</span>}
+                </h2>
                 {['apertura', 'cierre'].map((m) => (
                   <div key={m} className="mt-4 first:mt-0">
                     <h3 className="font-display text-xl font-bold mb-2">{MOMENTOS[m]}</h3>
                     <ul className="space-y-2">
-                  {tareas.filter((t) => t.momento === m).map((t) => (
-                    <li key={t.id} className="flex items-center justify-between gap-3 p-3 rounded-md border-2 border-acero/20">
-                      <span>
-                        <span className="block font-semibold">{t.titulo}</span>
-                        <span className="block text-sm text-acero/70">{t.id === 'asistencia' && j.asistencia ? `Presentes: ${j.asistencia.presentes} · Llegadas tarde: ${j.asistencia.tardes}` : dec[t.id] ? 'Marcada por el alumno' : 'Sin marcar'}</span>
-                      </span>
-                      <button
-                        onClick={() => aprobarTarea(j, t.id, !ap[t.id])}
-                        disabled={t.id === 'desafio' && !desafioHoy && !ap[t.id]}
-                        title={t.id === 'desafio' && !desafioHoy ? 'Publicá primero el desafío de hoy' : undefined}
-                        className={`${btn} ${ap[t.id] ? 'bg-operativa text-white border-operativa' : ''}`}
-                      >
-                        {ap[t.id] ? 'Aprobada ✓' : 'Aprobar'}
-                      </button>
-                    </li>
-                  ))}
+                      {tareas.filter((t) => t.momento === m).map((t) => <FilaTareaDocente key={t.id} j={j} t={t} />)}
                     </ul>
                   </div>
                 ))}
                 {j.premioChecklist && <p className="mt-2 text-sm text-operativa font-semibold">Checklist matutino completo: puntos ya sumados al equipo.</p>}
                 {j.premioCierre && <p className="mt-1 text-sm text-operativa font-semibold">Cierre de planta completo: puntos ya sumados al equipo.</p>}
 
-                <div className="mt-5 p-3 rounded-md border-2 border-acero/20">
-                  <p className="font-semibold">Respuesta del alumno al desafío</p>
-                  {criterioDocente && <p className="text-sm text-acero/70 mt-1">Tu criterio: {criterioDocente}</p>}
-                  <p className="mt-2 whitespace-pre-line">
-                    <b>{j.respuesta ?? (j.desafioAprobado ? '(aprobada)' : 'sin enviar')}</b>
-                  </p>
-                  {j.desafioAprobado ? (
-                    <p className="mt-2 text-operativa font-semibold">Aprobado: puntos ya sumados al equipo.</p>
-                  ) : (
-                    j.respuesta != null && (
-                      <div className="mt-3 flex gap-2">
-                        <button onClick={() => aprobarDesafio(j)} className={`${btn} bg-operativa text-white border-operativa`}>Aprobar</button>
-                        <button onClick={() => rechazarDesafio(j)} className={`${btn} text-alarma border-alarma`}>Rechazar</button>
-                      </div>
-                    )
-                  )}
-                </div>
+                <RevisionDesafio j={j} />
               </section>
             );
           })}
+          <EvolucionSemanal />
           <Historial />
           <ReiniciarPuntos />
         </div>

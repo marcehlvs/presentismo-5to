@@ -28,3 +28,21 @@ El docente carga un premio por semana (los alumnos lo ven junto al ranking de la
 
 ## Equipos
 Hay un equipo por cada Jefe de Planta (su líder), y cada uno tiene su día de la semana. Los nombres se cambian en `TURNOS`, dentro de `src/data/mockData.js`; los ids (`e1`…`e5`) no se tocan, así que renombrar no afecta los datos guardados.
+
+## Suplente, días sin clase y bonos
+En el panel docente, "Suplentes y días sin clase" trabaja por fecha (colección `dias`):
+- **Suplente:** si el líder falta, el docente escribe quién lo reemplaza. El suplente entra desde el inicio (ve su nombre en la lista) y usa la jornada del líder, así que los puntos van igual al equipo del líder.
+- **Día sin clase:** ese día no se puede iniciar turno, no se aprueban tareas y sus jornadas no cuentan para el promedio ni para el ranking semanal. Si el día ya tenía puntos, siguen en la tabla de posiciones (el panel avisa). El líder de un día sin clase puede hacer su jornada otro día de la semana y cuenta normal.
+- **Bonos:** puntos extra (1 a 100) para un equipo, con motivo y fecha (colección `bonos`). Suman a la tabla de posiciones y al ranking de la semana de esa fecha; un bono cargado por error se puede quitar y se restan los puntos. Los atajos "Semana perfecta" y "Cero llegadas tarde" están en `BONOS_SUGERIDOS` (`src/lib/semanas.js`).
+- "Volver a cero" con la casilla de historial también borra los bonos; los días sin clase y suplentes se conservan.
+
+## Comentarios del docente
+Al aprobar o rechazar una tarea (o la respuesta al desafío) el docente puede escribir un comentario. Al rechazar, la tarea vuelve a "sin marcar" y el equipo ve el comentario hasta que la marque otra vez. Se guarda en `devoluciones` dentro de la jornada.
+
+## Modo pantalla
+Abrí `/pantalla` en la pantalla interactiva del aula (hay enlaces en el inicio y en el panel docente): ranking y premio en grande, en tiempo real, con botón de pantalla completa. Pasa solo al día siguiente si queda abierta.
+
+## Evolución y planilla
+El panel docente muestra un gráfico semanal por equipo (promedio, puntos de la semana o acumulado) y un botón "Exportar a planilla (.xlsx)" con las hojas Jornadas, Semanas, Bonos y Días especiales.
+
+Después de actualizar este código: `npm install` y volvé a publicar las reglas (`firebase deploy --only firestore:rules`), que ahora incluyen `dias` y `bonos`.

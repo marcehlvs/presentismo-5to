@@ -4,13 +4,21 @@ export const PUNTOS_CHECKLIST = 10;
 export const PUNTOS_CIERRE = 10;
 export const PUNTOS_DESAFIO = 15;
 
+// Bonos: atajos del formulario del docente (después de tocarlos, los valores se pueden cambiar antes de guardar)
+export const BONOS_SUGERIDOS = [
+  { motivo: 'Semana perfecta', puntos: 20 },
+  { motivo: 'Cero llegadas tarde', puntos: 10 },
+];
+export const BONO_MAXIMO = 100;
+
 // 'promedio': gana el equipo con más puntos por jornada (justo si algún equipo tuvo menos días, por ejemplo por un feriado).
 // 'total': gana el equipo con más puntos en la semana.
+// En ambos casos los bonos suman puntos y los días sin clase no cuentan como jornada.
 export const CRITERIO_GANADOR = 'promedio';
 
 const pad = (n) => String(n).padStart(2, '0');
-const aIso = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-const deIso = (iso) => {
+export const aIso = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+export const deIso = (iso) => {
   const [y, m, d] = iso.split('-').map(Number);
   return new Date(y, m - 1, d);
 };
@@ -31,6 +39,7 @@ export function sumarDias(iso, n) {
 }
 
 export const etiquetaSemana = (lunes) => `Semana del ${lunes.slice(8, 10)}/${lunes.slice(5, 7)}`;
+export const etiquetaCorta = (lunes) => `${lunes.slice(8, 10)}/${lunes.slice(5, 7)}`;
 
 export function etiquetaDia(iso) {
   const d = deIso(iso);
@@ -40,16 +49,23 @@ export function etiquetaDia(iso) {
 export const puntosDeJornada = (j) =>
   (j.premioChecklist ? PUNTOS_CHECKLIST : 0) + (j.premioCierre ? PUNTOS_CIERRE : 0) + (j.desafioAprobado ? PUNTOS_DESAFIO : 0);
 
-// Puntos, jornadas y promedio por equipo para un conjunto de jornadas; determina el ganador
-export function resumenTurnos(jornadas) {
-  const r = Object.fromEntries(TURNOS.map((t) => [t.id, { ...t, puntos: 0, jornadas: 0 }]));
+// Puntos, bonos, jornadas y promedio por equipo para un conjunto de jornadas; determina el ganador.
+// diasSinClase (Set de fechas): sus jornadas no cuentan, así el feriado no baja el promedio de nadie.
+export function resumenTurnos(jornadas, { bonos = [], diasSinClase } = {}) {
+  const r = Object.fromEntries(TURNOS.map((t) => [t.id, { ...t, puntos: 0, bonos: 0, jornadas: 0 }]));
   for (const j of jornadas) {
+    if (diasSinClase?.has(j.fecha)) continue;
     const turno = ALUMNOS.find((a) => a.id === j.jefeId)?.turno;
     if (!r[turno]) continue;
     r[turno].puntos += puntosDeJornada(j);
     r[turno].jornadas += 1;
   }
-  const lista = Object.values(r).map((t) => ({ ...t, promedio: t.jornadas ? t.puntos / t.jornadas : 0 }));
+  for (const b of bonos) {
+    if (!r[b.turnoId]) continue;
+    r[b.turnoId].puntos += b.puntos;
+    r[b.turnoId].bonos += b.puntos;
+  }
+  const lista = Object.values(r).map((t) => ({ ...t, promedio: t.puntos / Math.max(t.jornadas, 1) }));
   const clave = (t) => (CRITERIO_GANADOR === 'total' ? t.puntos : t.promedio);
   lista.sort((a, b) => clave(b) - clave(a));
   const mejor = clave(lista[0]);
@@ -59,4 +75,16 @@ export function resumenTurnos(jornadas) {
     ganador: mejor > 0 && empatados.length === 1 ? empatados[0] : null,
     empate: mejor > 0 && empatados.length > 1,
   };
+}
+
+// Un resumen por cada semana que tenga jornadas o bonos, de la más vieja a la más nueva
+export function resumenPorSemana(jornadas, bonos, diasSinClase) {
+  const lunes = [...new Set([...jornadas.map((j) => lunesDe(j.fecha)), ...bonos.map((b) => lunesDe(b.fecha))])].sort();
+  return lunes.map((l) => ({
+    lunes: l,
+    ...resumenTurnos(
+      jornadas.filter((j) => lunesDe(j.fecha) === l),
+      { bonos: bonos.filter((b) => lunesDe(b.fecha) === l), diasSinClase }
+    ),
+  }));
 }

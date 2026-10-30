@@ -5,9 +5,10 @@ import { equipoDe } from '../data/mockData';
 import QualityControl from './QualityControl';
 import Leaderboard from './Leaderboard';
 import PremioSemana from './PremioSemana';
+import AvisoSinClase from './AvisoSinClase';
 
 export default function Dashboard() {
-  const { jefe, jornada, plantaOperativa, plantaCerrada, cerrarTurno } = usePlant();
+  const { jefe, jornada, plantaOperativa, plantaCerrada, cerrarTurno, suplenteHoy } = usePlant();
   const equipo = equipoDe(jefe);
 
   return (
@@ -23,7 +24,7 @@ export default function Dashboard() {
               <p className="font-display text-3xl font-bold leading-none">{jefe.nombre}</p>
               <p className="flex items-center gap-1.5 text-white/75 mt-1">
                 <CalendarDays className="size-4" aria-hidden="true" />
-                {jornada.diaNombre} · Líder de {equipo?.nombre}
+                {jornada.diaNombre} · Líder de {equipo?.nombre}{suplenteHoy ? ` · Suplente: ${suplenteHoy}` : ''}
               </p>
             </div>
           </div>
@@ -50,6 +51,7 @@ export default function Dashboard() {
       </header>
 
       <main className="max-w-6xl mx-auto px-4 py-6 grid gap-6 lg:grid-cols-[1fr_360px] items-start">
+        <AvisoSinClase className="lg:col-span-2" />
         <div className="space-y-6">
           <Checklist momento="apertura" titulo="Checklist matutino" />
           <QualityControl />

@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { Calculator, CircleCheck, CircleX, Hourglass, Lightbulb } from 'lucide-react';
 import { usePlant } from '../context/PlantContext';
+import Devolucion from './Devolucion';
 
 export default function QualityControl() {
-  const { desafioHoy, enviarRespuesta, respuestaEnviada, rechazos, desafioResuelto, puntosDesafio } = usePlant();
+  const { desafioHoy, enviarRespuesta, respuestaEnviada, rechazos, desafioResuelto, puntosDesafio, devoluciones } = usePlant();
   const [valor, setValor] = useState('');
   const bloqueado = desafioResuelto || respuestaEnviada !== null;
 
@@ -69,6 +70,7 @@ export default function QualityControl() {
                 Pieza rechazada. Revisala y enviala de nuevo.
               </p>
             )}
+            <Devolucion dev={devoluciones.respuesta} hecha={respuestaEnviada !== null} aprobada={desafioResuelto} rechazo="Comentario del docente" />
             {rechazos >= 1 && !desafioResuelto && desafioHoy.pista && (
               <p className="flex items-center gap-2 mt-1 text-acero/80">
                 <Lightbulb className="size-5 text-seguridad" aria-hidden="true" />
