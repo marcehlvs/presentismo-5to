@@ -1,11 +1,21 @@
 import { useEffect, useState } from 'react';
 import {
   Timer, Wind, MonitorCheck, Presentation, Users, Sparkles, Power, Lightbulb, ClipboardList, Cog, CircleCheck,
+  DoorOpen, Shirt, Droplets, PackageOpen, PackageCheck, Footprints, Dumbbell,
 } from 'lucide-react';
 import { usePlant } from '../context/PlantContext';
 import Devolucion from './Devolucion';
 
-const ICONOS = { Timer, Wind, MonitorCheck, Presentation, Users, Sparkles, Power, Lightbulb, ClipboardList };
+const ICONOS = {
+  Timer, Wind, MonitorCheck, Presentation, Users, Sparkles, Power, Lightbulb, ClipboardList,
+  DoorOpen, Shirt, Droplets, PackageOpen, PackageCheck, Footprints,
+};
+
+const MENSAJES_EXITO = {
+  apertura: { titulo: '¡Planta operativa!', detalle: 'Checklist aprobado' },
+  edfisica: { titulo: '¡Ed. Física completa!', detalle: 'Checklist de Ed. Física aprobado' },
+  cierre: { titulo: '¡Planta cerrada!', detalle: 'Cierre aprobado' },
+};
 
 const estilo = (aprobada, hecha, rechazada = false) =>
   aprobada ? 'border-operativa bg-operativa/10' : hecha ? 'border-seguridad bg-seguridad/10' : rechazada ? 'border-alarma bg-alarma/5' : 'border-acero/20';
@@ -87,19 +97,28 @@ function FilaAsistencia({ t }) {
   );
 }
 
-export default function Checklist({ momento, titulo }) {
-  const { tareas, hechas, aprobadas, toggleTarea, plantaOperativa, plantaCerrada, puntosChecklist, puntosCierre, devoluciones } = usePlant();
+export default function Checklist({ momento, titulo, ayuda }) {
+  const {
+    tareas, hechas, aprobadas, toggleTarea, plantaOperativa, plantaCerrada, plantaEdFisica,
+    puntosChecklist, puntosCierre, puntosEdFisica, devoluciones,
+  } = usePlant();
   const lista = tareas.filter((t) => t.momento === momento);
   const completadas = lista.filter((t) => aprobadas[t.id]).length;
-  const completo = momento === 'cierre' ? plantaCerrada : plantaOperativa;
+  const completo = { apertura: plantaOperativa, edfisica: plantaEdFisica, cierre: plantaCerrada }[momento];
+  const puntos = { apertura: puntosChecklist, edfisica: puntosEdFisica, cierre: puntosCierre }[momento];
+  const exito = MENSAJES_EXITO[momento];
   const idTitulo = `titulo-${momento}`;
 
   return (
     <section aria-labelledby={idTitulo} className="bg-white border-2 border-acero rounded-lg p-5">
       <div className="flex items-baseline justify-between mb-4">
-        <h2 id={idTitulo} className="font-display text-3xl font-bold">{titulo}</h2>
+        <h2 id={idTitulo} className="flex items-center gap-2 font-display text-3xl font-bold">
+          {momento === 'edfisica' && <Dumbbell className="size-7 shrink-0" aria-hidden="true" />}
+          {titulo}
+        </h2>
         <span className="font-medium tabular-nums">{completadas} de {lista.length} aprobadas</span>
       </div>
+      {ayuda && <p className="-mt-2 mb-4 text-sm text-acero/70">{ayuda}</p>}
 
       <div className="h-2 bg-hormigon rounded-full overflow-hidden mb-5" role="progressbar" aria-valuemin={0} aria-valuemax={lista.length} aria-valuenow={completadas}>
         <div className="h-full bg-operativa transition-all duration-300" style={{ width: `${lista.length ? (completadas / lista.length) * 100 : 0}%` }} />
@@ -141,10 +160,8 @@ export default function Checklist({ momento, titulo }) {
         <div role="status" className="anim-exito mt-5 flex items-center gap-4 bg-operativa text-white rounded-md p-4">
           <Cog className="anim-giro size-10 shrink-0" aria-hidden="true" />
           <div>
-            <p className="font-display text-2xl font-bold leading-tight">{momento === 'cierre' ? '¡Planta cerrada!' : '¡Planta operativa!'}</p>
-            <p className="text-sm">
-              {momento === 'cierre' ? 'Cierre aprobado' : 'Checklist aprobado'}. Tu equipo suma {momento === 'cierre' ? puntosCierre : puntosChecklist} puntos.
-            </p>
+            <p className="font-display text-2xl font-bold leading-tight">{exito.titulo}</p>
+            <p className="text-sm">{exito.detalle}. Tu equipo suma {puntos} puntos.</p>
           </div>
         </div>
       )}

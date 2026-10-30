@@ -1,0 +1,21 @@
+{
+  "id": "/",
+  "name": "Operación: Jefe de Planta",
+  "short_name": "Jefe de Planta",
+  "description": "Checklist diario, puntos y ranking de los equipos de 5.º año.",
+  "lang": "es-AR",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#e8e5de",
+  "theme_color": "#1f2a33",
+  "icons": [
+    { "src": "/icono-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icono-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icono-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Modo pantalla", "short_name": "Pantalla", "url": "/pantalla", "icons": [{ "src": "/icono-192.png", "sizes": "192x192", "type": "image/png" }] }
+  ]
+}

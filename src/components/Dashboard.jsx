@@ -8,7 +8,7 @@ import PremioSemana from './PremioSemana';
 import AvisoSinClase from './AvisoSinClase';
 
 export default function Dashboard() {
-  const { jefe, jornada, plantaOperativa, plantaCerrada, cerrarTurno, suplenteHoy } = usePlant();
+  const { jefe, jornada, plantaOperativa, plantaCerrada, cerrarTurno, suplenteHoy, hoyEdFisica } = usePlant();
   const equipo = equipoDe(jefe);
 
   return (
@@ -55,6 +55,12 @@ export default function Dashboard() {
         <div className="space-y-6">
           <Checklist momento="apertura" titulo="Checklist matutino" />
           <QualityControl />
+          {hoyEdFisica && (
+            <Checklist
+              momento="edfisica" titulo="Educación Física"
+              ayuda="Hoy hay Ed. Física, fuera del aula. Marcá cada paso a medida que lo hacés; el docente lo aprueba."
+            />
+          )}
           <Checklist momento="cierre" titulo="Cierre de planta" />
         </div>
         <div className="space-y-6">

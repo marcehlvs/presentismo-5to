@@ -4,10 +4,11 @@ import {
   collection, deleteField, doc, getDoc, increment, getDocs, onSnapshot, query, runTransaction, serverTimestamp, setDoc, where, writeBatch,
 } from 'firebase/firestore';
 import { auth, db } from '../firebase';
-import { ALUMNOS, TURNOS, TAREAS, PUNTAJES_INICIALES, getJornada, jefeDelDia, IDS_EXTRA } from '../data/mockData';
+import { ALUMNOS, TURNOS, TAREAS, TAREAS_EDFISICA, PUNTAJES_INICIALES, getJornada, jefeDelDia, IDS_EXTRA } from '../data/mockData';
 import {
-  BONO_MAXIMO, PUNTOS_CHECKLIST, PUNTOS_CIERRE, PUNTOS_DESAFIO, hoyISO, lunesDe, resumenTurnos, sumarDias,
+  BONO_MAXIMO, PUNTOS_CHECKLIST, PUNTOS_CIERRE, PUNTOS_DESAFIO, PUNTOS_EDFISICA, deIso, hoyISO, lunesDe, resumenTurnos, sumarDias,
 } from '../lib/semanas';
+import { alumnosEn, conVersion, sinVersion, validarLideres } from '../lib/lideres';
 
 export const PlantContext = createContext(null);
 
@@ -64,7 +65,8 @@ function conDevolucion(d, clave, resultado, texto) {
 }
 
 const docsA = (s) => s.docs.map((d) => ({ id: d.id, ...d.data() }));
-const setDeFechas = (dias) => new Set(dias.filter((d) => d.sinClase).map((d) => d.fecha));
+const setDeFechas = (dias, campo = 'sinClase') => new Set(dias.filter((d) => d[campo]).map((d) => d.fecha));
+const momentoExtra = (m) => (m === 'cierre' || m === 'edfisica' ? m : 'apertura');
 
 export function PlantProvider({ children }) {
   const [fecha, setFecha] = useState(hoyISO);
@@ -82,6 +84,7 @@ export function PlantProvider({ children }) {
   const [diasTodos, setDiasTodos] = useState([]); // solo docente: todos los días con novedades
   const [bonosTodos, setBonosTodos] = useState([]); // solo docente: todos los bonos
   const [premios, setPremios] = useState([]); // solo docente: todos los premios semanales
+  const [versionesLideres, setVersionesLideres] = useState([]); // cambios de líderes cargados por el docente (con fecha de vigencia)
   const [extras, setExtras] = useState([]); // tareas extra que agrega el docente para hoy
   const [desafioHoy, setDesafioHoy] = useState(null); // lo publica el docente
   const [criterioDocente, setCriterioDocente] = useState(''); // respuesta esperada: solo lo lee el docente
@@ -137,6 +140,7 @@ export function PlantProvider({ children }) {
       onSnapshot(semana('dias'), (s) => setDiasSemana(docsA(s)), fallo),
       onSnapshot(semana('bonos'), (s) => setBonosSemana(docsA(s)), fallo),
       onSnapshot(doc(db, 'premios', lunes), (s) => setPremioSemana(s.exists() ? s.data() : null), fallo),
+      onSnapshot(doc(db, 'config', 'lideres'), (s) => setVersionesLideres(s.exists() ? s.data().versiones ?? [] : []), fallo),
       solo(esDocente, () => onSnapshot(collection(db, 'jornadas'), (s) => setHistorial(docsA(s)), fallo)),
       solo(esDocente, () => onSnapshot(collection(db, 'dias'), (s) => setDiasTodos(docsA(s)), fallo)),
       solo(esDocente, () => onSnapshot(collection(db, 'bonos'), (s) => setBonosTodos(docsA(s)), fallo)),
@@ -149,30 +153,41 @@ export function PlantProvider({ children }) {
   const semana = lunesDe(fecha);
   const sinClaseSemana = useMemo(() => setDeFechas(diasSemana), [diasSemana]);
   const sinClaseTodos = useMemo(() => setDeFechas(diasTodos), [diasTodos]);
+  const edFisicaSemana = useMemo(() => setDeFechas(diasSemana, 'edFisica'), [diasSemana]);
+  const edFisicaTodos = useMemo(() => setDeFechas(diasTodos, 'edFisica'), [diasTodos]);
   const resumenSemana = useMemo(
-    () => resumenTurnos(jornadasSemana, { bonos: bonosSemana, diasSinClase: sinClaseSemana }),
-    [jornadasSemana, bonosSemana, sinClaseSemana]
+    () => resumenTurnos(jornadasSemana, { bonos: bonosSemana, diasSinClase: sinClaseSemana, diasEdFisica: edFisicaSemana }),
+    [jornadasSemana, bonosSemana, sinClaseSemana, edFisicaSemana]
   );
   const diaHoy = diasSemana.find((d) => d.fecha === fecha) ?? null;
   const hoySinClase = !!diaHoy?.sinClase;
+  // Ed. Física: solo hay checklist los días en que el docente la marcó (y que tengan clase)
+  const hoyEdFisica = !!diaHoy?.edFisica && !hoySinClase;
   const suplentesHoy = diaHoy?.suplentes ?? {};
-  const jefe = ALUMNOS.find((a) => a.id === jefeId) ?? null;
+  // Líderes vigentes hoy, y una función para ver los de otra fecha (por ejemplo, al mirar el historial)
+  const alumnos = useMemo(() => alumnosEn(versionesLideres, fecha), [versionesLideres, fecha]);
+  const alumnosDe = useMemo(() => (f) => alumnosEn(versionesLideres, f), [versionesLideres]);
+  const jefe = alumnos.find((a) => a.id === jefeId) ?? null;
   const actual = jornadasHoy.find((j) => j.jefeId === jefeId) ?? {};
   const hechas = actual.declaradas ?? {};
   const aprobadas = actual.aprobadas ?? {};
   const tareasDelDia = useMemo(
     () => [
       ...TAREAS,
-      ...extras.map((x) => ({
-        id: x.id, momento: x.momento === 'cierre' ? 'cierre' : 'apertura',
-        titulo: x.titulo, detalle: 'Tarea agregada por el docente', icono: 'ClipboardList',
-      })),
+      ...(hoyEdFisica ? TAREAS_EDFISICA : []),
+      ...extras
+        .map((x) => ({
+          id: x.id, momento: momentoExtra(x.momento),
+          titulo: x.titulo, detalle: 'Tarea agregada por el docente', icono: 'ClipboardList',
+        }))
+        .filter((t) => t.momento !== 'edfisica' || hoyEdFisica),
     ],
-    [extras]
+    [extras, hoyEdFisica]
   );
   const completo = (momento, ap) => tareasDelDia.filter((t) => t.momento === momento).every((t) => ap[t.id]);
   const plantaOperativa = completo('apertura', aprobadas);
   const plantaCerrada = completo('cierre', aprobadas);
+  const plantaEdFisica = hoyEdFisica && completo('edfisica', aprobadas);
 
   const ranking = useMemo(
     () => TURNOS.map((t) => ({ ...t, puntos: puntajes[t.id] ?? PUNTAJES_INICIALES[t.id] })).sort((a, b) => b.puntos - a.puntos),
@@ -208,6 +223,7 @@ export function PlantProvider({ children }) {
       let puntos = 0;
       if (completo('apertura', nuevas) && !d.premioChecklist) { cambios.premioChecklist = true; puntos += PUNTOS_CHECKLIST; }
       if (completo('cierre', nuevas) && !d.premioCierre) { cambios.premioCierre = true; puntos += PUNTOS_CIERRE; }
+      if (hoyEdFisica && completo('edfisica', nuevas) && !d.premioEdFisica) { cambios.premioEdFisica = true; puntos += PUNTOS_EDFISICA; }
       if (puntos) sumar(tx, await leerTurno(tx, turnoDe(d.jefeId)), puntos);
       tx.update(ref, cambios);
     }).catch((e) => setError(mensajeError(e)));
@@ -274,7 +290,7 @@ export function PlantProvider({ children }) {
   const publicarTareasExtra = async (items) => {
     const limpios = items
       .filter((x) => IDS_EXTRA.includes(x.id) && x.titulo.trim())
-      .map((x) => ({ id: x.id, titulo: x.titulo.trim().slice(0, 60), momento: x.momento === 'cierre' ? 'cierre' : 'apertura' }));
+      .map((x) => ({ id: x.id, titulo: x.titulo.trim().slice(0, 60), momento: momentoExtra(x.momento) }));
     try {
       await setDoc(doc(db, 'tareas_extra', fecha), { fecha, items: limpios });
       setError('');
@@ -305,7 +321,7 @@ export function PlantProvider({ children }) {
         const ref = doc(db, 'dias', fechaSel);
         const previo = (await tx.get(ref)).data() ?? {};
         const nuevo = mutar({ ...previo, suplentes: { ...(previo.suplentes ?? {}) } });
-        if (!nuevo.sinClase && Object.keys(nuevo.suplentes).length === 0) tx.delete(ref);
+        if (!nuevo.sinClase && !nuevo.edFisica && Object.keys(nuevo.suplentes).length === 0) tx.delete(ref);
         else tx.set(ref, { ...nuevo, fecha: fechaSel });
       });
       setError('');
@@ -331,6 +347,60 @@ export function PlantProvider({ children }) {
       else { delete d.sinClase; delete d.motivo; }
       return d;
     });
+
+  // Docente: marca (o desmarca) que ese día hay Ed. Física. Solo ese día aparece su checklist y se pueden ganar sus puntos.
+  const marcarEdFisica = (fechaSel, activo) =>
+    editarDia(fechaSel, (d) => {
+      if (activo) d.edFisica = true;
+      else delete d.edFisica;
+      return d;
+    });
+
+  // Docente: marca Ed. Física en todos los [día de la semana] entre dos fechas (diaSemana: 0 = domingo … 6 = sábado).
+  // Cada fecha queda cargada por separado, así se puede quitar una sola (por lluvia, feriado o profe ausente) sin tocar las demás.
+  const programarEdFisica = async (diaSemana, desde, hasta) => {
+    const fechas = [];
+    for (let f = desde; f <= hasta && fechas.length < 120; f = sumarDias(f, 1)) {
+      if (deIso(f).getDay() === Number(diaSemana)) fechas.push(f);
+    }
+    if (fechas.length === 0) return 0;
+    try {
+      for (let i = 0; i < fechas.length; i += 400) {
+        const lote = writeBatch(db);
+        fechas.slice(i, i + 400).forEach((f) => lote.set(doc(db, 'dias', f), { fecha: f, edFisica: true }, { merge: true }));
+        await lote.commit();
+      }
+      setError('');
+      return fechas.length;
+    } catch (e) {
+      setError(mensajeError(e));
+      return 0;
+    }
+  };
+
+  // Docente: cambia quién es el líder de cada día a partir de una fecha. Lo anterior no se toca: el historial conserva los nombres de entonces.
+  const guardarLideres = async (desde, items) => {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(desde) || validarLideres(items)) return false;
+    try {
+      await setDoc(doc(db, 'config', 'lideres'), { versiones: conVersion(versionesLideres, desde, items) });
+      setError('');
+      return true;
+    } catch (e) {
+      setError(mensajeError(e));
+      return false;
+    }
+  };
+
+  const quitarVersionLideres = async (desde) => {
+    try {
+      await setDoc(doc(db, 'config', 'lideres'), { versiones: sinVersion(versionesLideres, desde) });
+      setError('');
+      return true;
+    } catch (e) {
+      setError(mensajeError(e));
+      return false;
+    }
+  };
 
   // Docente: bono de puntos extra para un equipo. Se guarda el bono y se suman los puntos en la misma transacción.
   const cargarBono = async ({ turnoId, puntos, motivo, fecha: fechaBono }) => {
@@ -391,17 +461,17 @@ export function PlantProvider({ children }) {
   const logoutDocente = () => signOut(auth);
 
   const value = {
-    alumnos: ALUMNOS, tareas: tareasDelDia, jornada, fecha, jefe, jefeSugerido: jefeDelDia(), hechas, aprobadas, plantaOperativa, plantaCerrada, asistencia: actual.asistencia ?? null, extras,
+    alumnos, alumnosEn: alumnosDe, versionesLideres, guardarLideres, quitarVersionLideres, tareas: tareasDelDia, jornada, fecha, jefe, jefeSugerido: jefeDelDia(new Date(), alumnos), hechas, aprobadas, plantaOperativa, plantaCerrada, plantaEdFisica, hoyEdFisica, asistencia: actual.asistencia ?? null, extras,
     devoluciones: actual.devoluciones ?? {},
     suplenteHoy: jefe ? suplentesHoy[String(jefe.id)] ?? null : null,
     desafioResuelto: actual.desafioAprobado === true, respuestaEnviada: actual.respuesta ?? null, rechazos: actual.rechazos ?? 0,
-    ranking, puntosDesafio: PUNTOS_DESAFIO, puntosChecklist: PUNTOS_CHECKLIST, puntosCierre: PUNTOS_CIERRE,
+    ranking, puntosDesafio: PUNTOS_DESAFIO, puntosChecklist: PUNTOS_CHECKLIST, puntosCierre: PUNTOS_CIERRE, puntosEdFisica: PUNTOS_EDFISICA,
     iniciarTurno, cerrarTurno, toggleTarea, enviarRespuesta, guardarAsistencia, publicarTareasExtra,
     authListo, esDocente, cuentaSinPermiso: !!user && !user.isAnonymous && !esDocente, error,
     desafioHoy, criterioDocente, publicarDesafio,
     semana, resumenSemana, premioSemana, historial, premios, publicarPremio, reiniciarPuntos,
-    diaHoy, hoySinClase, suplentesHoy, jornadasSemana, bonosSemana, diasTodos, bonosTodos, sinClaseTodos,
-    designarSuplente, marcarSinClase, cargarBono, quitarBono,
+    diaHoy, hoySinClase, suplentesHoy, jornadasSemana, bonosSemana, diasTodos, bonosTodos, sinClaseTodos, edFisicaTodos,
+    designarSuplente, marcarSinClase, marcarEdFisica, programarEdFisica, cargarBono, quitarBono,
     jornadasHoy, aprobarTarea, rechazarTarea, aprobarDesafio, rechazarDesafio, loginDocente, logoutDocente,
   };
 

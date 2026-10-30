@@ -3,6 +3,7 @@ import { Factory, HardHat } from 'lucide-react';
 import { usePlant } from '../context/PlantContext';
 import { equipoDe } from '../data/mockData';
 import AvisoSinClase from './AvisoSinClase';
+import BotonInstalar from './BotonInstalar';
 
 export default function Login() {
   const { alumnos, iniciarTurno, jefeSugerido, hoySinClase, suplentesHoy } = usePlant();
@@ -63,6 +64,7 @@ export default function Login() {
             Tomar el mando
           </button>
           <a href="/pantalla" className="block text-center text-sm underline text-acero/70 hover:text-acero">Abrir modo pantalla</a>
+          <BotonInstalar />
         </form>
       </div>
     </main>

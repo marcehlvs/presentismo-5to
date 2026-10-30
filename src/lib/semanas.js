@@ -3,6 +3,10 @@ import { ALUMNOS, TURNOS } from '../data/mockData';
 export const PUNTOS_CHECKLIST = 10;
 export const PUNTOS_CIERRE = 10;
 export const PUNTOS_DESAFIO = 15;
+// Ed. Física: solo se puede ganar los días en que el docente la marca (ver "Días especiales")
+export const PUNTOS_EDFISICA = 10;
+// Lo máximo que se puede sumar en una jornada común; los días con Ed. Física tienen PUNTOS_EDFISICA más
+export const PUNTOS_JORNADA = PUNTOS_CHECKLIST + PUNTOS_CIERRE + PUNTOS_DESAFIO;
 
 // Bonos: atajos del formulario del docente (después de tocarlos, los valores se pueden cambiar antes de guardar)
 export const BONOS_SUGERIDOS = [
@@ -47,25 +51,35 @@ export function etiquetaDia(iso) {
 }
 
 export const puntosDeJornada = (j) =>
-  (j.premioChecklist ? PUNTOS_CHECKLIST : 0) + (j.premioCierre ? PUNTOS_CIERRE : 0) + (j.desafioAprobado ? PUNTOS_DESAFIO : 0);
+  (j.premioChecklist ? PUNTOS_CHECKLIST : 0) + (j.premioCierre ? PUNTOS_CIERRE : 0) + (j.desafioAprobado ? PUNTOS_DESAFIO : 0)
+  + (j.premioEdFisica ? PUNTOS_EDFISICA : 0);
+
+export const maximoDeJornada = (conEdFisica) => PUNTOS_JORNADA + (conEdFisica ? PUNTOS_EDFISICA : 0);
 
 // Puntos, bonos, jornadas y promedio por equipo para un conjunto de jornadas; determina el ganador.
 // diasSinClase (Set de fechas): sus jornadas no cuentan, así el feriado no baja el promedio de nadie.
-export function resumenTurnos(jornadas, { bonos = [], diasSinClase } = {}) {
-  const r = Object.fromEntries(TURNOS.map((t) => [t.id, { ...t, puntos: 0, bonos: 0, jornadas: 0 }]));
+// diasEdFisica (Set de fechas): ese día se puede sumar PUNTOS_EDFISICA más. Para que el equipo al que le toca Ed. Física no tenga
+// ventaja, el promedio se calcula sobre los puntos posibles: es "puntos por jornada común" (hasta PUNTOS_JORNADA).
+// Sin días de Ed. Física, da exactamente puntos / jornadas.
+export function resumenTurnos(jornadas, { bonos = [], diasSinClase, diasEdFisica } = {}) {
+  const r = Object.fromEntries(TURNOS.map((t) => [t.id, { ...t, puntos: 0, bonos: 0, jornadas: 0, posibles: 0 }]));
   for (const j of jornadas) {
     if (diasSinClase?.has(j.fecha)) continue;
     const turno = ALUMNOS.find((a) => a.id === j.jefeId)?.turno;
     if (!r[turno]) continue;
     r[turno].puntos += puntosDeJornada(j);
     r[turno].jornadas += 1;
+    r[turno].posibles += maximoDeJornada(diasEdFisica?.has(j.fecha));
   }
   for (const b of bonos) {
     if (!r[b.turnoId]) continue;
     r[b.turnoId].puntos += b.puntos;
     r[b.turnoId].bonos += b.puntos;
   }
-  const lista = Object.values(r).map((t) => ({ ...t, promedio: t.puntos / Math.max(t.jornadas, 1) }));
+  const lista = Object.values(r).map((t) => ({
+    ...t,
+    promedio: t.jornadas === 0 ? t.puntos : (t.puntos / t.posibles) * PUNTOS_JORNADA,
+  }));
   const clave = (t) => (CRITERIO_GANADOR === 'total' ? t.puntos : t.promedio);
   lista.sort((a, b) => clave(b) - clave(a));
   const mejor = clave(lista[0]);
@@ -78,13 +92,13 @@ export function resumenTurnos(jornadas, { bonos = [], diasSinClase } = {}) {
 }
 
 // Un resumen por cada semana que tenga jornadas o bonos, de la más vieja a la más nueva
-export function resumenPorSemana(jornadas, bonos, diasSinClase) {
+export function resumenPorSemana(jornadas, bonos, diasSinClase, diasEdFisica) {
   const lunes = [...new Set([...jornadas.map((j) => lunesDe(j.fecha)), ...bonos.map((b) => lunesDe(b.fecha))])].sort();
   return lunes.map((l) => ({
     lunes: l,
     ...resumenTurnos(
       jornadas.filter((j) => lunesDe(j.fecha) === l),
-      { bonos: bonos.filter((b) => lunesDe(b.fecha) === l), diasSinClase }
+      { bonos: bonos.filter((b) => lunesDe(b.fecha) === l), diasSinClase, diasEdFisica }
     ),
   }));
 }

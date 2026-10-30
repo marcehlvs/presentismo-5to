@@ -1,9 +1,8 @@
 import { Trophy } from 'lucide-react';
 import { usePlant } from '../context/PlantContext';
-import { ALUMNOS } from '../data/mockData';
 
 export default function Leaderboard() {
-  const { ranking, jefe } = usePlant();
+  const { ranking, jefe, alumnos } = usePlant();
   const maximo = ranking[0]?.puntos || 1;
 
   return (
@@ -16,7 +15,7 @@ export default function Leaderboard() {
       <ol className="space-y-3">
         {ranking.map((t, i) => {
           const esMio = jefe?.turno === t.id;
-          const lider = ALUMNOS.find((a) => a.turno === t.id);
+          const lider = alumnos.find((a) => a.turno === t.id);
           return (
             <li
               key={t.id}

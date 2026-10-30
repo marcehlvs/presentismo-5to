@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { usePlant } from '../context/PlantContext';
-import { ALUMNOS, IDS_EXTRA, MOMENTOS, TURNOS } from '../data/mockData';
+import { IDS_EXTRA, MOMENTOS, TURNOS } from '../data/mockData';
 import { CRITERIO_GANADOR, etiquetaDia, etiquetaSemana, lunesDe, puntosDeJornada, resumenPorSemana } from '../lib/semanas';
 import { exportarHistorial } from '../lib/exportar';
 import Leaderboard from './Leaderboard';
@@ -10,6 +10,8 @@ import RevisionDesafio from './RevisionDesafio';
 import DiasEspeciales from './DiasEspeciales';
 import Bonos from './Bonos';
 import EvolucionSemanal from './EvolucionSemanal';
+import LideresEditor from './LideresEditor';
+import ResumenSemanal from './ResumenSemanal';
 import { btn, campo } from './estilos';
 
 function FormularioDesafio() {
@@ -103,6 +105,7 @@ function FormularioTareasExtra() {
             />
             <select value={x.momento} onChange={(e) => cambiar(i, 'momento', e.target.value)} aria-label="Momento" className={`${campo} sm:w-48`}>
               <option value="apertura">{MOMENTOS.apertura}</option>
+              <option value="edfisica">{MOMENTOS.edfisica} (si hay ese día)</option>
               <option value="cierre">{MOMENTOS.cierre}</option>
             </select>
           </div>
@@ -145,13 +148,13 @@ function FormularioPremio() {
 }
 
 function Historial() {
-  const { historial, premios, bonosTodos, diasTodos, sinClaseTodos } = usePlant();
+  const { historial, premios, bonosTodos, diasTodos, sinClaseTodos, edFisicaTodos, alumnosEn } = usePlant();
   const [exportando, setExportando] = useState(false);
   const [falloExport, setFalloExport] = useState(false);
 
   const semanas = useMemo(
     () =>
-      resumenPorSemana(historial, bonosTodos, sinClaseTodos)
+      resumenPorSemana(historial, bonosTodos, sinClaseTodos, edFisicaTodos)
         .reverse()
         .map((s) => ({
           ...s,
@@ -160,14 +163,14 @@ function Historial() {
           dias: diasTodos.filter((d) => lunesDe(d.fecha) === s.lunes).sort((a, b) => a.fecha.localeCompare(b.fecha)),
           premio: premios.find((p) => p.id === s.lunes)?.texto,
         })),
-    [historial, premios, bonosTodos, diasTodos, sinClaseTodos]
+    [historial, premios, bonosTodos, diasTodos, sinClaseTodos, edFisicaTodos]
   );
 
   const exportar = async () => {
     setExportando(true);
     setFalloExport(false);
     try {
-      await exportarHistorial({ jornadas: historial, bonos: bonosTodos, dias: diasTodos, premios });
+      await exportarHistorial({ jornadas: historial, bonos: bonosTodos, dias: diasTodos, premios, alumnosEn });
     } catch (e) {
       console.error('[Exportar]', e);
       setFalloExport(true);
@@ -232,7 +235,7 @@ function Historial() {
                         <tr key={j.id}>
                           <td className={td}>{etiquetaDia(j.fecha)}</td>
                           <td className={td}>
-                            {ALUMNOS.find((a) => a.id === j.jefeId)?.nombre ?? j.jefeId}
+                            {alumnosEn(j.fecha).find((a) => a.id === j.jefeId)?.nombre ?? j.jefeId}
                             {suplente && <span className="text-acero/70"> · suplente: {suplente}</span>}
                           </td>
                           <td className={td}>{sinClase ? 'sin clase' : puntosDeJornada(j)}</td>
@@ -306,7 +309,7 @@ function ReiniciarPuntos() {
 }
 
 export default function PanelDocente() {
-  const { jornadasHoy, alumnos, tareas, logoutDocente, jornada, error, suplentesHoy } = usePlant();
+  const { jornadasHoy, alumnos, tareas, logoutDocente, jornada, error, suplentesHoy, hoyEdFisica } = usePlant();
 
   return (
     <div className="min-h-screen">
@@ -328,10 +331,16 @@ export default function PanelDocente() {
         <div className="space-y-6">
           {error && <p role="alert" className="text-alarma font-semibold">{error}</p>}
           <AvisoSinClase />
+          {hoyEdFisica && (
+            <p role="status" className="rounded-lg border-2 border-operativa bg-operativa/10 p-4 font-semibold">
+              Hoy hay Educación Física: los alumnos ven su checklist y lo aprobás acá, en el bloque “Educación Física” de cada líder.
+            </p>
+          )}
           <FormularioDesafio />
           <FormularioTareasExtra />
           <FormularioPremio />
           <DiasEspeciales />
+          <LideresEditor />
           <Bonos />
           {jornadasHoy.length === 0 && (
             <p className="bg-white border-2 border-acero rounded-lg p-5">Todavía no hay actividad de Jefes de Planta hoy.</p>
@@ -345,7 +354,7 @@ export default function PanelDocente() {
                   {alumno?.nombre ?? `Jefe ${j.jefeId}`}
                   {suplente && <span className="block font-sans text-base font-medium text-acero/70">Hoy lo reemplaza {suplente}. Los puntos van al equipo del líder.</span>}
                 </h2>
-                {['apertura', 'cierre'].map((m) => (
+                {['apertura', ...(hoyEdFisica ? ['edfisica'] : []), 'cierre'].map((m) => (
                   <div key={m} className="mt-4 first:mt-0">
                     <h3 className="font-display text-xl font-bold mb-2">{MOMENTOS[m]}</h3>
                     <ul className="space-y-2">
@@ -355,12 +364,14 @@ export default function PanelDocente() {
                 ))}
                 {j.premioChecklist && <p className="mt-2 text-sm text-operativa font-semibold">Checklist matutino completo: puntos ya sumados al equipo.</p>}
                 {j.premioCierre && <p className="mt-1 text-sm text-operativa font-semibold">Cierre de planta completo: puntos ya sumados al equipo.</p>}
+                {j.premioEdFisica && <p className="mt-1 text-sm text-operativa font-semibold">Educación Física completa: puntos ya sumados al equipo.</p>}
 
                 <RevisionDesafio j={j} />
               </section>
             );
           })}
           <EvolucionSemanal />
+          <ResumenSemanal />
           <Historial />
           <ReiniciarPuntos />
         </div>

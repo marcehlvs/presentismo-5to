@@ -1,0 +1,32 @@
+From 54162b3d3db798c9a18b5e607c7c4977a92c0107 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 30 Oct 2026 11:09:47 +0000
+Subject: [PATCH 1/2] =?UTF-8?q?Cambio=20de=20l=C3=ADder:=20Gonzalez=20V.?=
+ =?UTF-8?q?=20pasa=20al=20lunes=20y=20Mascaros=20M.=20al=20mi=C3=A9rcoles?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+---
+ src/data/mockData.js | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/src/data/mockData.js b/src/data/mockData.js
+index 06cdb58..b3a8e9d 100644
+--- a/src/data/mockData.js
++++ b/src/data/mockData.js
+@@ -13,9 +13,9 @@ export const PUNTAJES_INICIALES = { e1: 0, e2: 0, e3: 0, e4: 0, e5: 0 };
+ 
+ // Jefe de Planta de cada día de la semana
+ export const ALUMNOS = [
+-  { id: 1, nombre: 'Mascaros, M.', dia: 'Lunes', turno: 'e1' },
++  { id: 1, nombre: 'Gonzalez, V.', dia: 'Lunes', turno: 'e1' },
+   { id: 2, nombre: 'Ferrio, M.', dia: 'Martes', turno: 'e2' },
+-  { id: 3, nombre: 'Gonzalez, V.', dia: 'Miércoles', turno: 'e3' },
++  { id: 3, nombre: 'Mascaros, M.', dia: 'Miércoles', turno: 'e3' },
+   { id: 4, nombre: 'Godoy, U.', dia: 'Jueves', turno: 'e4' },
+   { id: 5, nombre: 'Toledo, D.', dia: 'Viernes', turno: 'e5' },
+ ];
+-- 
+2.43.0
+

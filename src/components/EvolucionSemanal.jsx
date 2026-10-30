@@ -33,11 +33,11 @@ const H = 320;
 const M = { l: 48, r: 20, t: 16, b: 44 };
 
 export default function EvolucionSemanal() {
-  const { historial, bonosTodos, sinClaseTodos } = usePlant();
+  const { historial, bonosTodos, sinClaseTodos, edFisicaTodos } = usePlant();
   const [metricaId, setMetricaId] = useState(CRITERIO_GANADOR === 'total' ? 'semana' : 'promedio');
   const metrica = METRICAS.find((m) => m.id === metricaId);
 
-  const semanas = useMemo(() => resumenPorSemana(historial, bonosTodos, sinClaseTodos), [historial, bonosTodos, sinClaseTodos]);
+  const semanas = useMemo(() => resumenPorSemana(historial, bonosTodos, sinClaseTodos, edFisicaTodos), [historial, bonosTodos, sinClaseTodos, edFisicaTodos]);
 
   // valores[equipo] = un número (o null) por semana
   const valores = useMemo(() => {

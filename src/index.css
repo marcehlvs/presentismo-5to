@@ -29,6 +29,16 @@
 .anim-giro  { animation: girar 4s linear infinite; }
 .anim-carga { animation: carga 1.3s ease-in-out infinite; }
 
+/* Resumen semanal: en pantalla no se ve; al imprimir es lo único que sale (A4, sin la app) */
+.solo-impresion { display: none; }
+@page { size: A4; margin: 12mm; }
+@media print {
+  body { background: #fff; }
+  #root { display: none !important; }
+  .solo-impresion { display: block !important; }
+  .solo-impresion table, .solo-impresion tr { break-inside: avoid; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .anim-exito, .anim-giro, .anim-carga { animation: none; }
 }

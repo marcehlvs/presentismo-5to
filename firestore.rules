@@ -16,7 +16,7 @@ service cloud.firestore {
       let d = request.resource.data;
       return (!('declaradas' in d)
               || (d.declaradas is map
-                  && d.declaradas.keys().hasOnly(['fichaje', 'ventilacion', 'insumos', 'asistencia', 'desafio', 'limpieza', 'apagado', 'luces', 'x1', 'x2', 'x3', 'x4', 'x5'])
+                  && d.declaradas.keys().hasOnly(['fichaje', 'ventilacion', 'insumos', 'asistencia', 'desafio', 'limpieza', 'apagado', 'luces', 'ef_salida', 'ef_equipo', 'ef_agua', 'ef_materiales', 'ef_devolucion', 'ef_regreso', 'x1', 'x2', 'x3', 'x4', 'x5'])
                   && d.declaradas.values().hasOnly([true, false])))
           && (!('respuesta' in d) || (d.respuesta is string && d.respuesta.size() <= 200))
           && (!('asistencia' in d)
@@ -59,6 +59,16 @@ service cloud.firestore {
     match /dias/{fecha} {
       allow read: if signedIn();
       allow write: if esDocente();
+    }
+
+    // Configuración (líderes de cada día, con fecha de vigencia): la lee cualquiera con sesión y la escribe solo el docente
+    match /config/{id} {
+      allow read: if signedIn();
+      allow write: if esDocente()
+        && id == 'lideres'
+        && request.resource.data.keys().hasOnly(['versiones'])
+        && request.resource.data.versiones is list
+        && request.resource.data.versiones.size() <= 60;
     }
 
     // Bonos de puntos extra: solo el docente los crea o los quita; nunca se editan

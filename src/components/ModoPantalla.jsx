@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Gift, Maximize, Trophy, WifiOff } from 'lucide-react';
 import { usePlant } from '../context/PlantContext';
-import { ALUMNOS, TURNOS } from '../data/mockData';
+import { TURNOS } from '../data/mockData';
 import { CRITERIO_GANADOR, etiquetaDia, etiquetaSemana } from '../lib/semanas';
 import AvisoSinClase from './AvisoSinClase';
 
@@ -38,7 +38,7 @@ const MEDALLA = ['bg-seguridad text-acero', 'bg-hormigon text-acero', 'bg-[#c98a
 
 // Vista para la pantalla interactiva del aula: ranking y premio en grande. Se actualiza sola (Firestore en tiempo real).
 export default function ModoPantalla() {
-  const { ranking, semana, premioSemana, resumenSemana, bonosSemana, fecha, jornada } = usePlant();
+  const { ranking, semana, premioSemana, resumenSemana, bonosSemana, fecha, jornada, alumnos, hoyEdFisica } = usePlant();
   const conectado = useConectado();
   useMantenerEncendida();
   const maximo = ranking[0]?.puntos || 1;
@@ -56,7 +56,7 @@ export default function ModoPantalla() {
       <header className="flex flex-wrap items-center justify-between gap-4 px-[3vw] pt-[2vh]">
         <div>
           <h1 className="font-display text-[clamp(1.75rem,min(4vw,7vh),4.5rem)] font-bold leading-none">Operación: Jefe de Planta</h1>
-          <p className="mt-1 text-[clamp(0.9rem,min(1.5vw,2.6vh),1.6rem)] text-white/75">{jornada.diaNombre} · {etiquetaDia(fecha)}</p>
+          <p className="mt-1 text-[clamp(0.9rem,min(1.5vw,2.6vh),1.6rem)] text-white/75">{jornada.diaNombre} · {etiquetaDia(fecha)}{hoyEdFisica ? ' · Hoy hay Educación Física' : ''}</p>
         </div>
         <div className="flex items-center gap-3 text-sm">
           <span role="status" className={`flex items-center gap-2 rounded-md px-3 py-1.5 font-semibold ${conectado ? 'bg-operativa text-white' : 'bg-alarma text-white'}`}>
@@ -79,7 +79,7 @@ export default function ModoPantalla() {
           </div>
           <ol className="flex min-h-0 flex-1 flex-col gap-[1.2vh]">
             {ranking.map((t, i) => {
-              const l = ALUMNOS.find((a) => a.turno === t.id);
+              const l = alumnos.find((a) => a.turno === t.id);
               return (
                 <li key={t.id} className="flex min-h-0 flex-1 flex-col justify-center rounded-md border-2 border-acero/15 px-[1.2vw]">
                   <div className="flex items-center gap-[1.2vw]">
