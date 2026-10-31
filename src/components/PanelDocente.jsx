@@ -12,6 +12,7 @@ import Bonos from './Bonos';
 import EvolucionSemanal from './EvolucionSemanal';
 import LideresEditor from './LideresEditor';
 import ResumenSemanal from './ResumenSemanal';
+import Pendientes from './Pendientes';
 import { btn, campo } from './estilos';
 
 function FormularioDesafio() {
@@ -350,6 +351,7 @@ export default function PanelDocente() {
         <div className="space-y-6">
           {error && <p role="alert" className="text-alarma font-semibold">{error}</p>}
           <AvisoSinClase />
+          <Pendientes />
           {hoyEdFisica && (
             <p role="status" className="rounded-lg border-2 border-operativa bg-operativa/10 p-4 font-semibold">
               Hoy hay Educación Física: los alumnos ven su checklist y lo aprobás acá, en el bloque “Educación Física” de cada líder.

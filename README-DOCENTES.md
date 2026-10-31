@@ -57,6 +57,8 @@ Ed. Física se hace fuera del aula, así que tiene **su propio checklist**, sepa
 Se entra desde *Acceso docente* con correo y contraseña. El panel permite:
 
 - **Aprobar o rechazar** cada tarea, con un comentario opcional. Si se rechaza, la tarea vuelve a "sin marcar" y el equipo ve el comentario hasta que la marque otra vez.
+  - **Quitar una aprobación:** si ya se habían sumado los puntos del bloque, se le restan al equipo; al aprobar de nuevo se vuelven a sumar, una sola vez. La cuenta de Ed. Física no puede quitar puntos: lo hace un docente completo.
+- **Pendientes de días anteriores:** arriba del panel aparece una bandeja con lo que quedó sin revisar en los últimos 21 días, para aprobarlo aunque haya pasado el día.
   - **Tarea que el alumno no marcó:** también se puede rechazar, siempre que se escriba un comentario que explique qué falta. El alumno lo ve en su checklist.
 - **Publicar el desafío del día:** materia, enunciado, pista opcional (aparece solo si se rechaza una respuesta) y un criterio de corrección que **los alumnos no ven**.
 - **Agregar hasta 5 tareas extra por día**, al checklist matutino, a Ed. Física o al cierre. Cada una puede tener hasta **200 caracteres**, así caben preguntas completas.
@@ -71,12 +73,12 @@ Se entra desde *Acceso docente* con correo y contraseña. El panel permite:
 
 ## Seguimiento y reportes
 
-- **Ranking en tiempo real** para alumnos y docentes, con el premio de la semana a la vista.
+- **Ranking en tiempo real** para alumnos y docentes, con el premio de la semana a la vista. La *Tabla de posiciones* suma los puntos acumulados (los días con Ed. Física pueden sumar 10 más); el *ganador de la semana* se define aparte, por puntos por jornada común, para que nadie tenga ventaja por el día que le toca.
 - **Evolución semanal** por equipo (promedio, puntos de la semana o acumulado).
 - **Resumen semanal para imprimir:** posiciones, detalle por día, asistencia, bonos y días sin clase, en una hoja A4 lista para imprimir o guardar como PDF.
 - **Exportar a planilla (.xlsx)** con las hojas *Jornadas*, *Semanas*, *Bonos* y *Días especiales*.
 - **Historial** de semanas anteriores.
-- **Volver a cero** (solo la cuenta superadmin): pide escribir REINICIAR, descarga primero una copia en Excel del historial y después borra los puntos de los cinco equipos, el historial (checklists, asistencia, respuestas y bonos de todas las fechas) y el desafío y las tareas extra de hoy. Si la copia falla, no borra nada (salvo que se tilde reiniciar igual). **No** borra los líderes, los días sin clase, suplentes y Ed. Física, ni los premios de la semana.
+- **Volver a cero** (solo la cuenta superadmin): pide escribir REINICIAR, descarga primero una copia en Excel del historial y después borra los puntos de los cinco equipos, el historial (checklists, asistencia, respuestas y bonos de todas las fechas) y el desafío y las tareas extra de hoy. Si la copia falla, no borra nada (salvo que se tilde reiniciar igual). Si se corta a mitad de camino, se puede volver a ejecutar. **No** borra los líderes, los días sin clase, suplentes y Ed. Física, ni los premios de la semana.
 
 ---
 
@@ -125,7 +127,8 @@ La app se puede **instalar** como una aplicación en el celular o la computadora
 - **Requiere internet** en el dispositivo desde el que se marca. Para Ed. Física conviene acordar si el líder marca el checklist en el patio (con celular y conexión) o al volver al aula.
 - **El ingreso de los alumnos no usa contraseña:** se elige el nombre de una lista. Como nada suma puntos hasta que el docente aprueba, el control queda siempre en manos del docente.
 - **La cuenta de Ed. Física es de confianza:** solo puede aprobar tareas de su bloque y sumar 10 puntos, pero las reglas no pueden atar esos puntos a una jornada concreta.
-- **Todo depende de la aprobación docente:** las tareas quedan "esperando aprobación" hasta que un docente las revise, y los puntos no se suman antes. Conviene reservar un momento del día para hacerlo.
+- **Todo depende de la aprobación docente:** las tareas quedan "esperando aprobación" hasta que un docente las revise, y los puntos no se suman antes. Conviene reservar un momento del día para hacerlo; lo que se pase de largo queda en la bandeja *Pendientes de días anteriores* durante 21 días.
+- **Fechas:** los alumnos solo pueden registrar jornadas de ayer, hoy o mañana. Para un día más viejo, el docente aprueba desde la bandeja de pendientes.
 
 ---
 

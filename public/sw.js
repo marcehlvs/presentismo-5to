@@ -1,7 +1,7 @@
 // Service worker mínimo: hace que la app se pueda instalar y que abra aunque se corte internet un momento.
 // Va siempre primero a la red (así una versión nueva se ve apenas se publica) y usa la copia guardada solo si no hay conexión.
 // Firestore y Firebase Auth son de otro dominio: no pasan por acá.
-const CACHE = 'jefe-de-planta-v1';
+const CACHE = 'jefe-de-planta-v2';
 
 self.addEventListener('install', () => self.skipWaiting());
 
@@ -19,7 +19,9 @@ self.addEventListener('fetch', (e) => {
   e.respondWith(
     fetch(pedido)
       .then((respuesta) => {
-        if (respuesta.ok) {
+        // Un archivo de la app que ya no existe lo contesta el hosting con index.html (200): eso no se guarda como si fuera el archivo
+        const esHtml = (respuesta.headers.get('content-type') ?? '').includes('text/html');
+        if (respuesta.ok && (pedido.mode === 'navigate' || !esHtml)) {
           const copia = respuesta.clone();
           caches.open(CACHE).then((c) => c.put(pedido, copia));
         }

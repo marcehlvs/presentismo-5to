@@ -6,7 +6,13 @@
 npm install
 npm run dev
 ```
-React 18 + Vite + Tailwind CSS v4 + Lucide React. Datos mockeados en `src/data/mockData.js`, estado global en `src/context/PlantContext.jsx`.
+React 18 + Vite + Tailwind CSS v4 + Lucide React + Firebase. Los equipos, las tareas y los líderes iniciales están en `src/data/mockData.js` (los líderes se cambian desde el panel docente, sin tocar el código); el estado global está en `src/context/PlantContext.jsx`.
+
+```bash
+npm test             # pruebas de la lógica de puntos, semanas, líderes y pendientes
+npm run test:rules   # pruebas de las reglas de Firestore (necesita Firebase CLI y Java; usa el emulador)
+```
+El CI de GitHub (`.github/workflows/ci.yml`) corre las pruebas y el build en cada push y pull request.
 
 ## Firebase (puntos compartidos y aprobación docente)
 1. Creá el proyecto y la base Firestore (modo producción). Copiá `.env.example` a `.env` y completá los datos de la app web.
@@ -17,6 +23,8 @@ React 18 + Vite + Tailwind CSS v4 + Lucide React. Datos mockeados en `src/data/m
 6. App Check (reCAPTCHA v3): registrá la app, pegá la clave en `VITE_RECAPTCHA_SITE_KEY` y activá "Enforce" al final.
 7. `npm run build && firebase deploy --only hosting`.
 
+Las reglas solo dejan a los alumnos escribir jornadas de **ayer, hoy o mañana** (hora de Argentina, calculada por el servidor): nadie puede inventar fechas ni modificar días viejos. Si un dispositivo tiene la fecha muy corrida, la app muestra un error de permisos. Antes de publicar cambios en las reglas conviene correr `npm run test:rules`.
+
 Los alumnos solo declaran tareas y envían respuestas; los puntos los suma el docente al aprobar.
 
 ## Desafío del día
@@ -26,7 +34,7 @@ El docente que tiene la primera hora inicia sesión en "Acceso docente" y public
 El checklist tiene dos momentos: matutino y cierre de planta (cada uno suma 10 puntos al equipo cuando el docente aprueba todo). La tarea "Presentes y llegadas tarde" guarda solo cantidades. El docente puede agregar hasta 5 tareas extra por día desde su panel. Volvé a publicar las reglas: `firebase deploy --only firestore:rules`.
 
 ## Premio semanal, historial y reinicio
-El docente carga un premio por semana (los alumnos lo ven junto al ranking de la semana). El ganador se define en `src/lib/semanas.js` (`CRITERIO_GANADOR`: por promedio de puntos por jornada o por total). El historial semanal sale de las jornadas guardadas. "Volver a cero" reinicia los puntos de los equipos y, si se marca la casilla, borra también el historial. Volvé a publicar las reglas: `firebase deploy --only firestore:rules`.
+El docente carga un premio por semana (los alumnos lo ven junto al ranking de la semana). El ganador se define en `src/lib/semanas.js` (`CRITERIO_GANADOR`: por promedio de puntos por jornada o por total). El historial semanal sale de las jornadas guardadas. "Volver a cero" (solo la cuenta superadmin) pide escribir REINICIAR, descarga una copia en Excel del historial y después borra jornadas, bonos, el desafío y las tareas extra de hoy y deja los puntos de los cinco equipos en cero. La casilla del cartel solo permite reiniciar aunque la copia falle. Borra primero jornadas y bonos y pone los puntos en cero al final: si se corta a mitad de camino, se puede volver a ejecutar sin problema. Volvé a publicar las reglas: `firebase deploy --only firestore:rules`.
 
 ## Equipos y líderes
 Hay un equipo por cada Jefe de Planta (su líder), y cada uno tiene su día de la semana. Los nombres de los equipos se cambian en `TURNOS`, dentro de `src/data/mockData.js`; los ids (`e1`…`e5`) no se tocan, así que renombrar no afecta los datos guardados.
@@ -43,6 +51,11 @@ En el panel docente, "Suplentes y días sin clase" trabaja por fecha (colección
 ## Comentarios del docente
 Al aprobar o rechazar una tarea (o la respuesta al desafío) el docente puede escribir un comentario. Al rechazar, la tarea vuelve a "sin marcar" y el equipo ve el comentario hasta que la marque otra vez. Se guarda en `devoluciones` dentro de la jornada.
 
+## Aprobaciones pendientes y quitar una aprobación
+El panel docente muestra arriba la bandeja **Pendientes de días anteriores**: jornadas de los últimos 21 días (`DIAS_PENDIENTES` en `src/lib/pendientes.js`) con tareas marcadas o respuestas al desafío que nadie aprobó. Se aprueban o rechazan ahí mismo y los puntos se suman al equipo de esa jornada. Los días sin clase no aparecen.
+
+Si el docente **quita la aprobación** de una tarea de un bloque que ya había sumado puntos (matutino, cierre o Ed. Física), el premio de ese bloque se retira y se le restan los puntos al equipo; al volver a aprobar todo, se suman de nuevo (una sola vez). La cuenta de Ed. Física no puede restar puntos (las reglas se lo impiden): si ya se sumaron, la aprobación la quita un docente completo. Una tarea aprobada ya no se puede destildar desde el celular del alumno. La lógica está en `src/lib/premios.js`.
+
 ## Modo pantalla
 Abrí `/pantalla` en la pantalla interactiva del aula (hay enlaces en el inicio y en el panel docente): ranking y premio en grande, en tiempo real, con botón de pantalla completa. Pasa solo al día siguiente si queda abierta.
 
@@ -57,7 +70,7 @@ Ed. Física se hace fuera del aula y tiene su propio checklist (salida ordenada,
 - **Quién lo hace:** el líder del día, en la misma jornada. Los alumnos ven un bloque "Educación Física" entre el desafío y el cierre; el docente lo aprueba en el mismo bloque del panel.
 - **Superadmin:** en `docentes/{uid}` poné `rol` (string) = `superadmin`. Es docente completo y además el único que ve "Volver a cero" (puntos, historial, bonos, y el desafío y tareas extra de hoy; no toca líderes, días especiales ni premios). Las reglas solo le dejan borrar jornadas a esta cuenta. Los puntos de los equipos, en cambio, se bloquean solo en la pantalla.
 - **Cuenta de la docente de Ed. Física (rol restringido):** solo ve y aprueba el bloque de Ed. Física (nada de desafío, bonos, reinicio ni resto del panel). Para crearla: Authentication > Users > Add user con su correo y una contraseña; copiá su UID; en Firestore creá `docentes/{ese UID}` con el campo `rol` (string) = `edfisica`. Sin ese campo, la cuenta es docente completo. Las reglas lo hacen cumplir en el servidor: solo puede tocar tareas `ef_*`, el premio de Ed. Física y sumar 10 puntos a un equipo (no puede restar, ni sumar otra cantidad).
-- **Puntos:** 10 al equipo cuando se aprueba todo (`PUNTOS_EDFISICA` en `src/lib/semanas.js`). Para que el equipo al que le toca Ed. Física no tenga ventaja, el promedio semanal se calcula sobre los puntos posibles (es "puntos por jornada común", hasta 40). Con `CRITERIO_GANADOR = 'total'` esa ventaja existe.
+- **Puntos:** 10 al equipo cuando se aprueba todo (`PUNTOS_EDFISICA` en `src/lib/semanas.js`). Para que el equipo al que le toca Ed. Física no tenga ventaja, el promedio semanal se calcula sobre los puntos posibles (es "puntos por jornada común", hasta 35). Con `CRITERIO_GANADOR = 'total'` esa ventaja existe.
 - **Tareas propias:** las tareas extra pueden asignarse al momento "Educación Física" y solo aparecen ese día.
 - Las reglas de Firestore cambiaron (tareas `ef_*` y `config`): volvé a publicarlas con `firebase deploy --only firestore:rules`.
 

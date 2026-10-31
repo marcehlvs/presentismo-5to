@@ -1,11 +1,14 @@
+import { lazy, Suspense } from 'react';
 import { PlantProvider, usePlant } from './context/PlantContext';
 import Login from './components/Login';
 import Dashboard from './components/Dashboard';
-import PanelDocente from './components/PanelDocente';
-import PanelEdFisica from './components/PanelEdFisica';
 import AccesoDocente from './components/AccesoDocente';
 import Cargando from './components/Cargando';
-import ModoPantalla from './components/ModoPantalla';
+
+// Los paneles del docente y la pantalla del aula no los usan los alumnos: se descargan solo cuando hacen falta
+const PanelDocente = lazy(() => import('./components/PanelDocente'));
+const PanelEdFisica = lazy(() => import('./components/PanelEdFisica'));
+const ModoPantalla = lazy(() => import('./components/ModoPantalla'));
 
 function Aviso({ children }) {
   return <p className="p-8 text-lg font-semibold">{children}</p>;
@@ -30,12 +33,12 @@ function Pantalla() {
     return (
       <>
         {error && <ErrorBanner mensaje={error} />}
-        <ModoPantalla />
+        <Suspense fallback={<Cargando />}><ModoPantalla /></Suspense>
       </>
     );
   }
-  if (esDocente) return <PanelDocente />;
-  if (esDocenteEF) return <PanelEdFisica />;
+  if (esDocente) return <Suspense fallback={<Cargando />}><PanelDocente /></Suspense>;
+  if (esDocenteEF) return <Suspense fallback={<Cargando />}><PanelEdFisica /></Suspense>;
   if (cuentaSinPermiso) {
     return (
       <Aviso>

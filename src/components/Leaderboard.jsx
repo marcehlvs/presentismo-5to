@@ -40,6 +40,9 @@ export default function Leaderboard() {
           );
         })}
       </ol>
+      <p className="mt-3 text-xs text-acero/60">
+        Puntos acumulados desde el inicio: los días con Ed. Física pueden sumar 10 más. El ganador de la semana se define aparte, por puntos por jornada común.
+      </p>
     </section>
   );
 }

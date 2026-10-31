@@ -97,6 +97,9 @@ export default function ModoPantalla() {
               );
             })}
           </ol>
+          <p className="mt-[1.2vh] shrink-0 text-[clamp(0.7rem,0.95vw,0.95rem)] text-acero/60">
+            Puntos acumulados desde el inicio. El ganador de la semana se define por puntos por jornada común.
+          </p>
         </section>
 
         <section aria-labelledby="pantalla-premio" className="flex min-h-0 flex-col overflow-hidden rounded-lg bg-seguridad p-[1.6vw] text-acero">

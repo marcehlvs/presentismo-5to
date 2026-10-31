@@ -133,11 +133,12 @@ export default function Checklist({ momento, titulo, ayuda }) {
           return (
             <li key={t.id}>
               <label
-                className={`flex items-center gap-3 p-3 rounded-md border-2 cursor-pointer transition has-[:focus-visible]:ring-4 has-[:focus-visible]:ring-seguridad/60 ${estilo(aprobada, hecha, fueRechazada(devoluciones[t.id], hecha, aprobada))} ${
+                className={`flex items-center gap-3 p-3 rounded-md border-2 ${aprobada ? 'cursor-default' : 'cursor-pointer'} transition has-[:focus-visible]:ring-4 has-[:focus-visible]:ring-seguridad/60 ${estilo(aprobada, hecha, fueRechazada(devoluciones[t.id], hecha, aprobada))} ${
                   !aprobada && !hecha ? 'hover:border-acero' : ''
                 }`}
               >
-                <input type="checkbox" checked={hecha} onChange={() => toggleTarea(t.id)} className="sr-only" />
+                {/* Una tarea aprobada por el docente ya no se puede destildar */}
+                <input type="checkbox" checked={hecha} disabled={aprobada} onChange={() => toggleTarea(t.id)} className="sr-only" />
                 <Casilla aprobada={aprobada} hecha={hecha} />
                 <Icono className="size-6 shrink-0" aria-hidden="true" />
                 <span className="min-w-0">
