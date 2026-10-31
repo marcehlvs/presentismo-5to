@@ -30,7 +30,7 @@ Una jornada común suma hasta **35 puntos**; un día con Ed. Física, hasta **45
 
 ## Educación Física
 
-Ed. Física se hace fuera del aula, así que tiene **su propio checklist**, separado del matutino y del cierre. Solo aparece los días en que el docente lo marca.
+Ed. Física se hace fuera del aula, así que tiene **su propio checklist**, separado del matutino y del cierre. Aparece **automáticamente los lunes y viernes**, y el docente puede quitarla o sumarla en días puntuales.
 
 **Checklist de Ed. Física** (lo completa el Jefe de Planta del día):
 
@@ -43,11 +43,11 @@ Ed. Física se hace fuera del aula, así que tiene **su propio checklist**, sepa
 
 **Cómo se organiza**
 
-- **Qué días hay:** en el panel docente, sección *Suplentes, días sin clase y Ed. Física*, se marca la fecha puntual o se repite "todos los martes hasta tal fecha". Cada fecha queda cargada por separado, así que se puede quitar una sola por lluvia, feriado o ausencia del profe.
-- **Quién la aprueba:** cualquier docente con acceso al panel, en el bloque *Educación Física* de cada líder. Si la quiere aprobar el profe de Ed. Física, hay que crearle un usuario docente.
+- **Qué días hay:** los **lunes y viernes**, desde el 30/10/2026 (las jornadas anteriores no cambian). No hace falta cargar fechas. En el panel docente, sección *Suplentes, días sin clase y Ed. Física*, se puede **quitar un lunes o viernes puntual** (lluvia, feriado, ausencia del profe) o **sumar otro día**, solo o repetido ("todos los miércoles hasta tal fecha"). Los días sin clase nunca tienen Ed. Física.
+- **Quién la aprueba:** cualquier docente con acceso al panel, en el bloque *Educación Física* de cada líder, o la **cuenta de Ed. Física**, que ve un panel reducido con solo ese bloque (ver *Cuentas y permisos*).
 - **Puntos:** 10 al equipo cuando se aprueba todo.
 - **Sin ventaja para nadie:** el equipo al que le toca un día con Ed. Física tiene más puntos posibles. Para que no se favorezca, el ranking semanal compara **puntos sobre puntos posibles** (se muestra como "puntos por jornada común", hasta 35).
-- **Tareas propias:** el docente puede agregar tareas extra y asignarlas al momento *Educación Física*; solo aparecen ese día.
+- **Tareas propias:** el docente puede agregar tareas extra y asignarlas al momento *Educación Física*; solo aparecen ese día. Esas tareas extra las aprueba el docente completo, no la cuenta de Ed. Física.
 - **Aviso visible:** los días con Ed. Física, la pantalla del aula muestra "Hoy hay Educación Física".
 
 ---
@@ -57,8 +57,9 @@ Ed. Física se hace fuera del aula, así que tiene **su propio checklist**, sepa
 Se entra desde *Acceso docente* con correo y contraseña. El panel permite:
 
 - **Aprobar o rechazar** cada tarea, con un comentario opcional. Si se rechaza, la tarea vuelve a "sin marcar" y el equipo ve el comentario hasta que la marque otra vez.
+  - **Tarea que el alumno no marcó:** también se puede rechazar, siempre que se escriba un comentario que explique qué falta. El alumno lo ve en su checklist.
 - **Publicar el desafío del día:** materia, enunciado, pista opcional (aparece solo si se rechaza una respuesta) y un criterio de corrección que **los alumnos no ven**.
-- **Agregar hasta 5 tareas extra por día**, al checklist matutino, a Ed. Física o al cierre.
+- **Agregar hasta 5 tareas extra por día**, al checklist matutino, a Ed. Física o al cierre. Cada una puede tener hasta **200 caracteres**, así caben preguntas completas.
 - **Cargar el premio de la semana**, que ven los alumnos junto al ranking.
 - **Otorgar bonos** de 1 a 100 puntos a un equipo, con motivo y fecha (por ejemplo "Semana perfecta" o "Cero llegadas tarde"). Un bono cargado por error se puede quitar.
 - **Gestionar situaciones del día a día:**
@@ -74,7 +75,22 @@ Se entra desde *Acceso docente* con correo y contraseña. El panel permite:
 - **Evolución semanal** por equipo (promedio, puntos de la semana o acumulado).
 - **Resumen semanal para imprimir:** posiciones, detalle por día, asistencia, bonos y días sin clase, en una hoja A4 lista para imprimir o guardar como PDF.
 - **Exportar a planilla (.xlsx)** con las hojas *Jornadas*, *Semanas*, *Bonos* y *Días especiales*.
-- **Historial** de semanas anteriores. **Volver a cero** (solo la cuenta superadmin) descarga primero una copia en Excel y después borra puntos, historial, bonos y el desafío y las tareas extra de hoy.
+- **Historial** de semanas anteriores.
+- **Volver a cero** (solo la cuenta superadmin): pide escribir REINICIAR, descarga primero una copia en Excel del historial y después borra los puntos de los cinco equipos, el historial (checklists, asistencia, respuestas y bonos de todas las fechas) y el desafío y las tareas extra de hoy. Si la copia falla, no borra nada (salvo que se tilde reiniciar igual). **No** borra los líderes, los días sin clase, suplentes y Ed. Física, ni los premios de la semana.
+
+---
+
+## Cuentas y permisos
+
+Hay tres tipos de cuenta docente. Todas se dan de alta a mano en Firebase (Authentication, y un documento `docentes/{UID}` en Firestore):
+
+| Cuenta | Cómo se crea | Qué puede hacer |
+|---|---|---|
+| **Docente** | Documento `docentes/{UID}` sin más campos | Todo el panel: aprobar, desafío, tareas extra, bonos, premios, suplentes, días especiales, líderes, reportes |
+| **Docente de Ed. Física** | `docentes/{UID}` con `rol` = `edfisica` | Solo ve y aprueba o rechaza el bloque de Ed. Física del líder del día. No ve el resto del panel. Solo puede sumar los 10 puntos de Ed. Física |
+| **Superadmin** | `docentes/{UID}` con `rol` = `superadmin` | Todo lo del docente, y además es la única cuenta que ve **Volver a cero** |
+
+Los permisos los hacen cumplir las reglas de la base de datos, no solo la pantalla. Una excepción: los puntos de los equipos se protegen del reinicio solo en la pantalla.
 
 ---
 
@@ -91,7 +107,7 @@ Abriendo `/pantalla` en la pantalla interactiva, el curso ve en grande el rankin
 - **Los puntos solo los suma el docente** al aprobar. Las reglas de la base de datos impiden que un alumno modifique puntajes, bonos o aprobaciones.
 - Una vez aprobados, la respuesta al desafío y la asistencia **ya no se pueden cambiar**.
 - La respuesta esperada del desafío es **visible únicamente para docentes**.
-- Solo ingresan como docentes las cuentas que el administrador dio de alta.
+- Solo ingresan como docentes las cuentas que el administrador dio de alta, cada una con su nivel de permisos (ver *Cuentas y permisos*).
 
 ---
 
@@ -108,7 +124,7 @@ La app se puede **instalar** como una aplicación en el celular o la computadora
 
 - **Requiere internet** en el dispositivo desde el que se marca. Para Ed. Física conviene acordar si el líder marca el checklist en el patio (con celular y conexión) o al volver al aula.
 - **El ingreso de los alumnos no usa contraseña:** se elige el nombre de una lista. Como nada suma puntos hasta que el docente aprueba, el control queda siempre en manos del docente.
-- **Las cuentas docentes tienen acceso completo al panel:** hoy no hay un rol limitado "solo Ed. Física". Si el profe de Ed. Física aprueba su bloque, puede ver todo el panel.
+- **La cuenta de Ed. Física es de confianza:** solo puede aprobar tareas de su bloque y sumar 10 puntos, pero las reglas no pueden atar esos puntos a una jornada concreta.
 - **Todo depende de la aprobación docente:** las tareas quedan "esperando aprobación" hasta que un docente las revise, y los puntos no se suman antes. Conviene reservar un momento del día para hacerlo.
 
 ---
