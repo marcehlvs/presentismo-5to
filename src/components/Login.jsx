@@ -4,6 +4,7 @@ import { usePlant } from '../context/PlantContext';
 import { equipoDe } from '../data/mockData';
 import AvisoSinClase from './AvisoSinClase';
 import Avatar from './Avatar';
+import CampoClave from './CampoClave';
 import Creditos from './Creditos';
 import BotonInstalar from './BotonInstalar';
 
@@ -72,8 +73,8 @@ export default function Login() {
           {pideSuPin && (
             <div className="space-y-2">
               <label htmlFor="pin" className="block font-medium">PIN del líder (4 números)</label>
-              <input
-                id="pin" value={pin} inputMode="numeric" autoComplete="off" maxLength={4} type="password"
+              <CampoClave
+                id="pin" value={pin} inputMode="numeric" autoComplete="off" maxLength={4}
                 onChange={(e) => { setPin(e.target.value.replace(/\D/g, '').slice(0, 4)); setErrorPin(''); }}
                 className="w-full border-2 border-acero rounded-md px-3 py-2.5 bg-white tracking-[0.5em] focus:outline-none focus:ring-4 focus:ring-seguridad/60"
               />

@@ -1,6 +1,6 @@
 # Operación: Jefe de Planta
 
-**Versión 1.4.0** · Desarrollada por **Juan Marcelo Bejarano** · [Historial de cambios](CHANGELOG.md)
+**Versión 1.4.1** · Desarrollada por **Juan Marcelo Bejarano** · [Historial de cambios](CHANGELOG.md)
 
 > 📋 ¿Sos docente? Mirá la [guía de funcionalidades para docentes](README-DOCENTES.md).
 

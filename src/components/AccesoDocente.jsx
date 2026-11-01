@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { usePlant } from '../context/PlantContext';
+import CampoClave from './CampoClave';
 
 export default function AccesoDocente() {
   const { loginDocente } = usePlant();
@@ -33,7 +34,7 @@ export default function AccesoDocente() {
         <form onSubmit={entrar} className="w-full max-w-sm bg-white border-2 border-acero rounded-lg p-4 space-y-3 shadow-[6px_6px_0_0_var(--color-acero)]">
           <p className="font-display text-2xl font-bold">Acceso docente</p>
           <input type="email" required autoComplete="username" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} className={campo} />
-          <input type="password" required autoComplete="current-password" placeholder="Contraseña" value={clave} onChange={(e) => setClave(e.target.value)} className={campo} />
+          <CampoClave required autoComplete="current-password" placeholder="Contraseña" aria-label="Contraseña" value={clave} onChange={(e) => setClave(e.target.value)} className={campo} />
           {error && <p role="alert" className="text-alarma font-semibold text-sm">{error}</p>}
           <div className="flex gap-2">
             <button disabled={cargando} className="flex-1 bg-acero text-seguridad font-display text-xl font-bold py-2 rounded-md disabled:opacity-50">

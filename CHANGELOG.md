@@ -1,8 +1,14 @@
 # Historial de versiones — Operación: Jefe de Planta
 
-Aplicación desarrollada por **Juan Marcelo Bejarano**. La versión actual es la **1.4.0** (1 de noviembre de 2026).
+Aplicación desarrollada por **Juan Marcelo Bejarano**. La versión actual es la **1.4.1** (1 de noviembre de 2026).
 
 Cada versión indica qué cambió para los docentes y si hubo que publicar las reglas de Firestore (`firebase deploy --only firestore:rules`; siempre antes que la app).
+
+## [1.4.1] — 1/11/2026
+**Para los docentes**
+- **Mostrar u ocultar lo que se escribe** en la contraseña del acceso docente y en el PIN de los líderes: un botón con un ojito al costado del campo.
+
+**Técnico:** sin cambios en las reglas.
 
 ## [1.4.0] — 1/11/2026
 **Para los docentes**
