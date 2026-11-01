@@ -13,11 +13,11 @@ export const PUNTAJES_INICIALES = { e1: 0, e2: 0, e3: 0, e4: 0, e5: 0 };
 
 // Jefe de Planta de cada día de la semana
 export const ALUMNOS = [
-  { id: 1, nombre: 'Gonzalez, V.', dia: 'Lunes', turno: 'e1' },
-  { id: 2, nombre: 'Ferrio, M.', dia: 'Martes', turno: 'e2' },
-  { id: 3, nombre: 'Mascaros, M.', dia: 'Miércoles', turno: 'e3' },
-  { id: 4, nombre: 'Godoy, U.', dia: 'Jueves', turno: 'e4' },
-  { id: 5, nombre: 'Toledo, D.', dia: 'Viernes', turno: 'e5' },
+  { id: 1, nombre: 'Gonzalez, V.', dia: 'Lunes', turno: 'e1', avatar: '🦾' },
+  { id: 2, nombre: 'Ferrio, M.', dia: 'Martes', turno: 'e2', avatar: '🔧' },
+  { id: 3, nombre: 'Mascaros, M.', dia: 'Miércoles', turno: 'e3', avatar: '🚀' },
+  { id: 4, nombre: 'Godoy, U.', dia: 'Jueves', turno: 'e4', avatar: '⚙️' },
+  { id: 5, nombre: 'Toledo, D.', dia: 'Viernes', turno: 'e5', avatar: '🦺' },
 ];
 
 

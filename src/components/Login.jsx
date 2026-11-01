@@ -3,6 +3,7 @@ import { Factory, HardHat } from 'lucide-react';
 import { usePlant } from '../context/PlantContext';
 import { equipoDe } from '../data/mockData';
 import AvisoSinClase from './AvisoSinClase';
+import Avatar from './Avatar';
 import BotonInstalar from './BotonInstalar';
 
 export default function Login() {
@@ -47,11 +48,14 @@ export default function Login() {
               ))}
             </select>
             {!hoySinClase && jefeSugerido && (
-              <p className="text-sm text-acero/70">
-                {suplenteSugerido
-                  ? `Hoy ${jefeSugerido.nombre} no está: lo reemplaza ${suplenteSugerido}. Los puntos van al ${equipoDe(jefeSugerido)?.nombre}.`
-                  : `Hoy le toca a ${jefeSugerido.nombre}.`}
-              </p>
+              <div className="flex items-center gap-3 rounded-md bg-hormigon/60 p-3">
+                <Avatar emoji={jefeSugerido.avatar} className="size-12 text-3xl" />
+                <p className="text-sm text-acero/70">
+                  {suplenteSugerido
+                    ? `Hoy ${jefeSugerido.nombre} no está: lo reemplaza ${suplenteSugerido}. Los puntos van al ${equipoDe(jefeSugerido)?.nombre}.`
+                    : `Hoy le toca a ${jefeSugerido.nombre}.`}
+                </p>
+              </div>
             )}
           </div>
 

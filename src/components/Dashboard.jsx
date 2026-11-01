@@ -1,4 +1,5 @@
 import { HardHat, CalendarDays, Power, LogOut } from 'lucide-react';
+import Avatar from './Avatar';
 import { usePlant } from '../context/PlantContext';
 import Checklist from './Checklist';
 import { equipoDe } from '../data/mockData';
@@ -17,9 +18,13 @@ export default function Dashboard() {
         <div className="franja-peligro h-3" />
         <div className="max-w-6xl mx-auto px-4 py-5 flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <span className="size-12 rounded-full bg-seguridad text-acero flex items-center justify-center shrink-0">
-              <HardHat className="size-7" aria-hidden="true" />
-            </span>
+            {jefe.avatar ? (
+              <Avatar emoji={jefe.avatar} className="size-14 text-4xl" />
+            ) : (
+              <span className="size-12 rounded-full bg-seguridad text-acero flex items-center justify-center shrink-0">
+                <HardHat className="size-7" aria-hidden="true" />
+              </span>
+            )}
             <div>
               <p className="font-display text-3xl font-bold leading-none">{jefe.nombre}</p>
               <p className="flex items-center gap-1.5 text-white/75 mt-1">

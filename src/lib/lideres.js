@@ -1,3 +1,4 @@
+import { esAvatar } from '../data/avatares';
 import { ALUMNOS } from '../data/mockData';
 
 // Los líderes se pueden cambiar desde el panel docente con una fecha de vigencia ("desde el lunes 2/11 el líder es X").
@@ -18,7 +19,7 @@ export function alumnosEn(versiones, fecha) {
   return ALUMNOS.map((base) => {
     const c = vigente.items.find((x) => Number(x?.id) === base.id);
     if (!c || !textoValido(c.nombre) || !DIAS_CLASE.includes(c.dia)) return base;
-    return { ...base, nombre: c.nombre.trim(), dia: c.dia };
+    return { ...base, nombre: c.nombre.trim(), dia: c.dia, avatar: esAvatar(c.avatar) ? c.avatar : base.avatar };
   });
 }
 
@@ -27,6 +28,7 @@ export function validarLideres(items) {
   if (!Array.isArray(items) || items.length !== ALUMNOS.length) return 'Faltan líderes.';
   if (items.some((x) => !textoValido(x.nombre))) return 'Todos los líderes necesitan un nombre.';
   if (items.some((x) => !DIAS_CLASE.includes(x.dia))) return 'Elegí un día de lunes a viernes para cada líder.';
+  if (items.some((x) => x.avatar != null && !esAvatar(x.avatar))) return 'Elegí un avatar de la lista.';
   if (new Set(items.map((x) => x.dia)).size !== items.length) return 'Cada día tiene que tener un solo líder: hay dos con el mismo día.';
   return '';
 }
@@ -34,7 +36,7 @@ export function validarLideres(items) {
 export function limpiarItems(items) {
   return [...items]
     .sort((a, b) => a.id - b.id)
-    .map((x) => ({ id: Number(x.id), nombre: String(x.nombre).trim().slice(0, 40), dia: x.dia }));
+    .map((x) => ({ id: Number(x.id), nombre: String(x.nombre).trim().slice(0, 40), dia: x.dia, ...(esAvatar(x.avatar) ? { avatar: x.avatar } : {}) }));
 }
 
 // Agrega o reemplaza la versión de esa fecha y deja la lista ordenada

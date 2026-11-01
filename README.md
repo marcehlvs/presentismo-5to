@@ -84,3 +84,7 @@ La app se puede instalar en el celular o la computadora (PWA): `public/manifest.
 - **iPhone/iPad (Safari):** Compartir > "Agregar a inicio".
 - El service worker solo se registra en la versión publicada. Siempre busca primero en internet (una versión nueva se ve apenas se publica) y usa la copia guardada solo si no hay conexión. Los datos siguen necesitando internet.
 - Después de actualizar: `npm run build && firebase deploy`.
+
+## Avatares y verificación de puntos
+- **Avatares:** cada Jefe de Planta tiene un avatar (emoji) que se ve en su pantalla, en el inicio de sesión, en la tabla de posiciones y en el modo pantalla. La lista está en `src/data/avatares.js` y el docente lo elige en "Líderes de la semana" junto con el nombre y el día (se guarda en `config/lideres`, así que no requiere cambiar las reglas). Si un líder no tiene avatar cargado, se usa el del puesto (`mockData.js`).
+- **Verificar puntos:** en el panel docente compara el contador de cada equipo (`turnos/{id}.puntos`, lo que ve la tabla) con el total calculado desde las jornadas y los bonos (`src/lib/verificarPuntos.js`; cuenta también los días sin clase que ya tenían puntos). Si hay diferencia, "Corregir" deja el contador igual al calculado.

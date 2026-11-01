@@ -86,7 +86,7 @@ export default function ModoPantalla() {
                     <span className={`grid size-[clamp(2.25rem,min(4vw,7vh),4.5rem)] shrink-0 place-items-center rounded-full font-display text-[clamp(1.25rem,min(2.6vw,4.4vh),2.8rem)] font-bold ${MEDALLA[i] ?? 'bg-acero/10'}`}>{i + 1}</span>
                     <div className="min-w-0 flex-1">
                       <p className="truncate font-display text-[clamp(1.25rem,min(2.6vw,4.4vh),2.8rem)] font-bold leading-tight">{t.nombre}</p>
-                      {l && <p className="text-[clamp(0.8rem,min(1.2vw,2vh),1.2rem)] text-acero/70">Líder: {l.nombre} · {l.dia}</p>}
+                      {l && <p className="text-[clamp(0.8rem,min(1.2vw,2vh),1.2rem)] text-acero/70">{l.avatar ? `${l.avatar} ` : ''}Líder: {l.nombre} · {l.dia}</p>}
                     </div>
                     <p className="font-display text-[clamp(1.5rem,min(3.4vw,6vh),3.6rem)] font-bold tabular-nums leading-none">{t.puntos}<span className="ml-1 text-[0.45em] font-semibold">pts</span></p>
                   </div>

@@ -12,6 +12,7 @@ import Bonos from './Bonos';
 import EvolucionSemanal from './EvolucionSemanal';
 import DiasEdFisicaEditor from './DiasEdFisicaEditor';
 import LideresEditor from './LideresEditor';
+import VerificarPuntos from './VerificarPuntos';
 import ResumenSemanal from './ResumenSemanal';
 import Pendientes from './Pendientes';
 import { btn, campo } from './estilos';
@@ -365,6 +366,7 @@ export default function PanelDocente() {
           <DiasEdFisicaEditor />
           <LideresEditor />
           <Bonos />
+          <VerificarPuntos />
           {jornadasHoy.length === 0 && (
             <p className="bg-white border-2 border-acero rounded-lg p-5">Todavía no hay actividad de Jefes de Planta hoy.</p>
           )}

@@ -135,3 +135,7 @@ La app se puede **instalar** como una aplicación en el celular o la computadora
 ## Personalización
 
 Los nombres de los equipos, los puntos de cada bloque y el criterio para elegir al ganador de la semana (por promedio o por total) se pueden adaptar a cada curso; lo hace quien mantiene la app. Los detalles técnicos están en [`README.md`](README.md).
+
+## Avatares y verificar puntos
+- **Avatar del Jefe de Planta:** en *Líderes de la semana* elegís un avatar para cada líder; lo ven en su pantalla, al iniciar el turno, en la tabla y en la pantalla del aula. Se guarda junto con el cambio de líderes y rige desde la fecha elegida.
+- **Verificar puntos:** muestra, por equipo, el contador de la tabla y el total calculado desde las jornadas y los bonos. Si coinciden, aparece un ✓. Si no, el calculado es el correcto: tocá *Corregir* (o *Corregir todos*). Conviene mirarlo después de cargar bonos o de aprobar jornadas viejas, y antes de entregar un premio.

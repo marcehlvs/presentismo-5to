@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
 import { usePlant } from '../context/PlantContext';
+import { AVATARES } from '../data/avatares';
 import { TURNOS } from '../data/mockData';
 import { DIAS_CLASE, validarLideres } from '../lib/lideres';
 import { etiquetaDia, hoyISO, lunesDe, sumarDias } from '../lib/semanas';
 import { btn, campo } from './estilos';
 
 const proximoLunes = () => sumarDias(lunesDe(hoyISO()), 7);
-const paraFormulario = (alumnos) => alumnos.map(({ id, nombre, dia, turno }) => ({ id, nombre, dia, turno }));
+const paraFormulario = (alumnos) => alumnos.map(({ id, nombre, dia, turno, avatar }) => ({ id, nombre, dia, turno, avatar }));
 const nombreEquipo = (turno) => TURNOS.find((t) => t.id === turno)?.nombre ?? turno;
 
 // Cambio de líderes sin tocar el código: se elige desde qué fecha rige y el historial conserva los nombres de cada fecha
@@ -39,7 +40,7 @@ export default function LideresEditor() {
     <section className="bg-white border-2 border-acero rounded-lg p-5">
       <h2 className="font-display text-3xl font-bold mb-1">Líderes de la semana</h2>
       <p className="text-sm text-acero/70 mb-3">
-        Cada equipo conserva su puesto y sus puntos: lo que cambia es quién lo lidera y qué día le toca. El cambio rige desde la fecha que elijas
+        Cada equipo conserva su puesto y sus puntos: lo que cambia es quién lo lidera, qué día le toca y su avatar. El cambio rige desde la fecha que elijas
         y lo anterior no se modifica (el historial muestra el líder de cada día).
       </p>
       <form onSubmit={guardar} className="space-y-3">
@@ -56,9 +57,12 @@ export default function LideresEditor() {
         )}
         <div className="space-y-2">
           {items.map((x, i) => (
-            <div key={x.id} className="grid gap-2 sm:grid-cols-[9rem_1fr_11rem] items-center">
+            <div key={x.id} className="grid gap-2 sm:grid-cols-[9rem_8rem_1fr_11rem] items-center">
               <select value={x.dia} onChange={(e) => cambiar(i, 'dia', e.target.value)} aria-label={`Día del equipo ${nombreEquipo(x.turno)}`} className={campo}>
                 {DIAS_CLASE.map((d) => <option key={d}>{d}</option>)}
+              </select>
+              <select value={x.avatar ?? ''} onChange={(e) => cambiar(i, 'avatar', e.target.value)} aria-label={`Avatar del equipo ${nombreEquipo(x.turno)}`} className={campo}>
+                {AVATARES.map((a) => <option key={a.emoji} value={a.emoji}>{a.emoji} {a.nombre}</option>)}
               </select>
               <input
                 value={x.nombre} onChange={(e) => cambiar(i, 'nombre', e.target.value)} maxLength={40} placeholder="Apellido, N."
@@ -83,7 +87,7 @@ export default function LideresEditor() {
           {cambios.map((v) => (
             <li key={v.desde} className="flex flex-wrap items-center gap-x-2">
               <b>Desde {etiquetaDia(v.desde)}:</b>
-              <span>{DIAS_CLASE.map((d) => v.items.find((x) => x.dia === d)).filter(Boolean).map((x) => `${x.dia.slice(0, 3)} ${x.nombre}`).join(' · ')}</span>
+              <span>{DIAS_CLASE.map((d) => v.items.find((x) => x.dia === d)).filter(Boolean).map((x) => `${x.avatar ? `${x.avatar} ` : ''}${x.dia.slice(0, 3)} ${x.nombre}`).join(' · ')}</span>
               <button onClick={() => quitar(v)} className="underline text-alarma">Quitar</button>
             </li>
           ))}

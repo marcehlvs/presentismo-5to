@@ -502,6 +502,19 @@ export function PlantProvider({ children }) {
     }
   };
 
+  // Docente: deja el contador de un equipo igual al total calculado desde sus jornadas y bonos (ver "Verificar puntos")
+  const corregirPuntos = async (turnoId, valor) => {
+    if (!TURNOS.some((t) => t.id === turnoId) || !Number.isInteger(valor) || valor < 0) return false;
+    try {
+      await setDoc(doc(db, 'turnos', turnoId), { puntos: valor });
+      setError('');
+      return true;
+    } catch (e) {
+      setError(mensajeError(e));
+      return false;
+    }
+  };
+
   // Docente: quita un bono (por error de carga) y le resta esos puntos al equipo
   const quitarBono = (b) =>
     runTransaction(db, async (tx) => {
@@ -559,7 +572,7 @@ export function PlantProvider({ children }) {
     semana, resumenSemana, premioSemana, historial, premios, publicarPremio, reiniciarPuntos,
     diaHoy, hoySinClase, suplentesHoy, jornadasSemana, bonosSemana, diasTodos, bonosTodos, sinClaseTodos, edFisicaTodos,
     sinClaseDe, tareasEn,
-    versionesEF, diasEdFisicaHoy: diasEdFisicaEn(versionesEF, fecha), guardarDiasEdFisica, quitarVersionEdFisica,
+    puntajes, corregirPuntos, versionesEF, diasEdFisicaHoy: diasEdFisicaEn(versionesEF, fecha), guardarDiasEdFisica, quitarVersionEdFisica,
     designarSuplente, marcarSinClase, marcarEdFisica, programarEdFisica, cargarBono, quitarBono,
     jornadasHoy, aprobarTarea, rechazarTarea, aprobarDesafio, rechazarDesafio, loginDocente, logoutDocente,
   };
