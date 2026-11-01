@@ -1,12 +1,13 @@
 import { usePlant } from '../context/PlantContext';
 import { MOMENTOS } from '../data/mockData';
+import { textoDiasEdFisica } from '../lib/semanas';
 import FilaTareaDocente from './FilaTareaDocente';
 import AvisoSinClase from './AvisoSinClase';
 
 // Panel de la cuenta docente de Ed. Física (docentes/{uid} con rol = 'edfisica'): solo ve y aprueba el bloque de Ed. Física
 // de cada líder. No publica desafíos, no carga bonos ni toca el resto del panel.
 export default function PanelEdFisica() {
-  const { jornadasHoy, alumnos, tareas, logoutDocente, jornada, error, hoyEdFisica, suplentesHoy, puntosEdFisica } = usePlant();
+  const { jornadasHoy, alumnos, tareas, logoutDocente, jornada, error, hoyEdFisica, suplentesHoy, puntosEdFisica, diasEdFisicaHoy } = usePlant();
   // Solo las tareas propias de Ed. Física (las que agrega el docente general no se aprueban desde acá)
   const tareasEF = tareas.filter((t) => t.momento === 'edfisica' && t.id.startsWith('ef_'));
 
@@ -27,7 +28,7 @@ export default function PanelEdFisica() {
         {error && <p role="alert" className="text-alarma font-semibold">{error}</p>}
         <AvisoSinClase />
         {!hoyEdFisica ? (
-          <p className="bg-white border-2 border-acero rounded-lg p-5">Hoy no hay Educación Física. Los lunes y viernes aparece sola.</p>
+          <p className="bg-white border-2 border-acero rounded-lg p-5">Hoy no hay Educación Física. Aparece sola {textoDiasEdFisica(diasEdFisicaHoy)}.</p>
         ) : jornadasHoy.length === 0 ? (
           <p className="bg-white border-2 border-acero rounded-lg p-5">Todavía no hay actividad del líder de hoy.</p>
         ) : (

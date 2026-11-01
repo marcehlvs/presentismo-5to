@@ -3,13 +3,13 @@ import { usePlant } from '../context/PlantContext';
 import { FERIADOS, FERIADOS_DESDE } from '../data/feriados';
 import { TURNOS, jefeDelDia } from '../data/mockData';
 import { DIAS_CLASE } from '../lib/lideres';
-import { deIso, etiquetaDia, puntosDeJornada, sumarDias } from '../lib/semanas';
+import { deIso, etiquetaDia, puntosDeJornada, sumarDias, textoDiasEdFisica } from '../lib/semanas';
 import { btn, campo } from './estilos';
 
 // Suplente del líder, días sin clase y días con Ed. Física, cargados por fecha
 export default function DiasEspeciales() {
   const {
-    fecha, diasTodos, historial, designarSuplente, marcarSinClase, marcarEdFisica, programarEdFisica, puntosEdFisica, alumnosEn, edFisicaTodos,
+    fecha, diasTodos, historial, designarSuplente, marcarSinClase, marcarEdFisica, programarEdFisica, puntosEdFisica, alumnosEn, edFisicaTodos, diasEdFisicaHoy,
   } = usePlant();
   const [f, setF] = useState(fecha);
   const [diaEF, setDiaEF] = useState('3');
@@ -53,7 +53,7 @@ export default function DiasEspeciales() {
   );
   // Feriados nacionales precargados que vienen (se marcan solos como sin clase)
   const proximosFeriados = useMemo(() => FERIADOS.filter((x) => x.fecha >= fecha && x.fecha >= FERIADOS_DESDE).slice(0, 4), [fecha]);
-  // Fechas con Ed. Física que se cargaron a mano (los lunes y viernes ya vienen solos) y fechas quitadas
+  // Fechas con Ed. Física que se cargaron a mano (los días de la semana con Ed. Física ya vienen solos) y fechas quitadas
   const fechasEF = useMemo(() => diasTodos.filter((d) => d.edFisica).map((d) => d.fecha).sort(), [diasTodos]);
   const proximasEF = useMemo(() => fechasEF.filter((x) => x >= fecha).slice(0, 8), [fechasEF, fecha]);
   const quitadasEF = useMemo(() => diasTodos.filter((d) => d.sinEdFisica && d.fecha >= fecha).map((d) => d.fecha).sort().slice(0, 8), [diasTodos, fecha]);
@@ -144,7 +144,7 @@ export default function DiasEspeciales() {
         <div className="p-3 rounded-md border-2 border-acero/20 space-y-3 md:col-span-2">
           <h3 className="font-display text-xl font-bold">Educación Física</h3>
           <p className="text-sm text-acero/70">
-            Se hace fuera del aula y tiene su propio checklist, que le toca al líder del día. Los lunes y viernes aparece solo; acá podés quitarla un día puntual (lluvia, feriado, profe ausente) o sumar otro día. Suma {puntosEdFisica} puntos al equipo cuando se aprueba todo.
+            Se hace fuera del aula y tiene su propio checklist, que le toca al líder del día. Aparece solo {textoDiasEdFisica(diasEdFisicaHoy)} (se cambia en «Días de Educación Física»); acá podés quitarla un día puntual (lluvia, feriado, profe ausente) o sumar otro día. Suma {puntosEdFisica} puntos al equipo cuando se aprueba todo.
             Los puntos de ese día no le dan ventaja a ningún equipo: el promedio de la semana se calcula sobre los puntos posibles.
           </p>
           <div className="flex flex-wrap items-center gap-2">
@@ -178,11 +178,11 @@ export default function DiasEspeciales() {
           {msjEF && <p role="status" className="text-sm font-semibold text-operativa">{msjEF}</p>}
           <p className="text-sm">
             {proximasEF.length === 0
-              ? 'No hay días extra marcados a mano (además de los lunes y viernes).'
+              ? `No hay días extra marcados a mano (además de ${textoDiasEdFisica(diasEdFisicaHoy)}).`
               : <>Días extra con Ed. Física ({fechasEF.filter((x) => x >= fecha).length} en total): <b>{proximasEF.map(etiquetaDia).join(' · ')}</b></>}
           </p>
           {quitadasEF.length > 0 && (
-            <p className="text-sm">Lunes o viernes sin Ed. Física: <b>{quitadasEF.map(etiquetaDia).join(' · ')}</b></p>
+            <p className="text-sm">Días con Ed. Física automática en los que se quitó: <b>{quitadasEF.map(etiquetaDia).join(' · ')}</b></p>
           )}
         </div>
       </div>

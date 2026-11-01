@@ -7,7 +7,7 @@ import { auth, db } from '../firebase';
 import { feriadoDe } from '../data/feriados';
 import { ALUMNOS, TURNOS, TAREAS, TAREAS_EDFISICA, PUNTAJES_INICIALES, getJornada, jefeDelDia, IDS_EXTRA } from '../data/mockData';
 import {
-  BONO_MAXIMO, aplicarFeriados, PUNTOS_CHECKLIST, PUNTOS_CIERRE, PUNTOS_DESAFIO, PUNTOS_EDFISICA, TAREA_EXTRA_MAX, crearDiasEdFisica, deIso, hoyISO, lunesDe, resumenTurnos, sumarDias,
+  BONO_MAXIMO, aplicarFeriados, PUNTOS_CHECKLIST, PUNTOS_CIERRE, PUNTOS_DESAFIO, PUNTOS_EDFISICA, TAREA_EXTRA_MAX, conVersionEdFisica, crearDiasEdFisica, deIso, diasEdFisicaEn, sinVersionEdFisica, validarDiasEdFisica, hoyISO, lunesDe, resumenTurnos, sumarDias,
 } from '../lib/semanas';
 import { alumnosEn, conVersion, sinVersion, validarLideres } from '../lib/lideres';
 import { premiosTrasAprobacion } from '../lib/premios';
@@ -103,6 +103,7 @@ export function PlantProvider({ children }) {
   const [diasTodosBruto, setDiasTodos] = useState([]); // solo docente: todos los días con novedades
   const [bonosTodos, setBonosTodos] = useState([]); // solo docente: todos los bonos
   const [premios, setPremios] = useState([]); // solo docente: todos los premios semanales
+  const [versionesEF, setVersionesEF] = useState([]); // días de Ed. Física cargados por el docente (con fecha de vigencia)
   const [versionesLideres, setVersionesLideres] = useState([]); // cambios de líderes cargados por el docente (con fecha de vigencia)
   const [extras, setExtras] = useState([]); // tareas extra que agrega el docente para hoy
   const [extrasTodos, setExtrasTodos] = useState({}); // solo docente: tareas extra de todas las fechas (para aprobar días anteriores)
@@ -180,6 +181,7 @@ export function PlantProvider({ children }) {
       onSnapshot(semana('dias'), (s) => setDiasSemana(docsA(s)), fallo),
       onSnapshot(semana('bonos'), (s) => setBonosSemana(docsA(s)), fallo),
       onSnapshot(doc(db, 'premios', lunes), (s) => setPremioSemana(s.exists() ? s.data() : null), fallo),
+      onSnapshot(doc(db, 'config', 'edfisica'), (s) => setVersionesEF(s.exists() ? s.data().versiones ?? [] : []), fallo),
       onSnapshot(doc(db, 'config', 'lideres'), (s) => setVersionesLideres(s.exists() ? s.data().versiones ?? [] : []), fallo),
       solo(esDocente, () => onSnapshot(collection(db, 'jornadas'), (s) => setHistorial(docsA(s)), fallo)),
       solo(esDocente, () => onSnapshot(collection(db, 'dias'), (s) => setDiasTodos(docsA(s)), fallo)),
@@ -197,8 +199,8 @@ export function PlantProvider({ children }) {
   const diasTodos = useMemo(() => aplicarFeriados(diasTodosBruto), [diasTodosBruto]);
   const sinClaseSemana = useMemo(() => setDeFechas(diasSemana), [diasSemana]);
   const sinClaseTodos = useMemo(() => setDeFechas(diasTodos), [diasTodos]);
-  const edFisicaSemana = useMemo(() => crearDiasEdFisica(diasSemana), [diasSemana]);
-  const edFisicaTodos = useMemo(() => crearDiasEdFisica(diasTodos), [diasTodos]);
+  const edFisicaSemana = useMemo(() => crearDiasEdFisica(diasSemana, versionesEF), [diasSemana, versionesEF]);
+  const edFisicaTodos = useMemo(() => crearDiasEdFisica(diasTodos, versionesEF), [diasTodos, versionesEF]);
   const resumenSemana = useMemo(
     () => resumenTurnos(jornadasSemana, { bonos: bonosSemana, diasSinClase: sinClaseSemana, diasEdFisica: edFisicaSemana }),
     [jornadasSemana, bonosSemana, sinClaseSemana, edFisicaSemana]
@@ -396,11 +398,11 @@ export function PlantProvider({ children }) {
       return d;
     });
 
-  // Docente: marca (o desmarca) que ese día hay Ed. Física. Los lunes y viernes ya la tienen: quitarla guarda `sinEdFisica`
+  // Docente: marca (o desmarca) que ese día hay Ed. Física. Los días de la semana con Ed. Física automática ya la tienen: quitarla guarda `sinEdFisica`
   // para esa fecha sola; volver a ponerla borra esa marca. En cualquier otro día se guarda `edFisica`.
   const marcarEdFisica = (fechaSel, activo) =>
     editarDia(fechaSel, (d) => {
-      const auto = crearDiasEdFisica([]).has(fechaSel);
+      const auto = crearDiasEdFisica([], versionesEF).has(fechaSel);
       if (activo) {
         delete d.sinEdFisica;
         if (!auto) d.edFisica = true;
@@ -438,6 +440,30 @@ export function PlantProvider({ children }) {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(desde) || validarLideres(items)) return false;
     try {
       await setDoc(doc(db, 'config', 'lideres'), { versiones: conVersion(versionesLideres, desde, items) });
+      setError('');
+      return true;
+    } catch (e) {
+      setError(mensajeError(e));
+      return false;
+    }
+  };
+
+  // Docente: cambia los días de la semana con Ed. Física a partir de una fecha. Lo anterior no se toca (el historial conserva los días de entonces).
+  const guardarDiasEdFisica = async (desde, dias) => {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(desde) || validarDiasEdFisica(dias)) return false;
+    try {
+      await setDoc(doc(db, 'config', 'edfisica'), { versiones: conVersionEdFisica(versionesEF, desde, dias) });
+      setError('');
+      return true;
+    } catch (e) {
+      setError(mensajeError(e));
+      return false;
+    }
+  };
+
+  const quitarVersionEdFisica = async (desde) => {
+    try {
+      await setDoc(doc(db, 'config', 'edfisica'), { versiones: sinVersionEdFisica(versionesEF, desde) });
       setError('');
       return true;
     } catch (e) {
@@ -533,6 +559,7 @@ export function PlantProvider({ children }) {
     semana, resumenSemana, premioSemana, historial, premios, publicarPremio, reiniciarPuntos,
     diaHoy, hoySinClase, suplentesHoy, jornadasSemana, bonosSemana, diasTodos, bonosTodos, sinClaseTodos, edFisicaTodos,
     sinClaseDe, tareasEn,
+    versionesEF, diasEdFisicaHoy: diasEdFisicaEn(versionesEF, fecha), guardarDiasEdFisica, quitarVersionEdFisica,
     designarSuplente, marcarSinClase, marcarEdFisica, programarEdFisica, cargarBono, quitarBono,
     jornadasHoy, aprobarTarea, rechazarTarea, aprobarDesafio, rechazarDesafio, loginDocente, logoutDocente,
   };

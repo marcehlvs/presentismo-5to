@@ -10,6 +10,7 @@ import RevisionDesafio from './RevisionDesafio';
 import DiasEspeciales from './DiasEspeciales';
 import Bonos from './Bonos';
 import EvolucionSemanal from './EvolucionSemanal';
+import DiasEdFisicaEditor from './DiasEdFisicaEditor';
 import LideresEditor from './LideresEditor';
 import ResumenSemanal from './ResumenSemanal';
 import Pendientes from './Pendientes';
@@ -149,7 +150,7 @@ function FormularioPremio() {
 }
 
 function Historial() {
-  const { historial, premios, bonosTodos, diasTodos, sinClaseTodos, edFisicaTodos, alumnosEn } = usePlant();
+  const { historial, premios, bonosTodos, diasTodos, sinClaseTodos, edFisicaTodos, alumnosEn, versionesEF } = usePlant();
   const [exportando, setExportando] = useState(false);
   const [falloExport, setFalloExport] = useState(false);
 
@@ -171,7 +172,7 @@ function Historial() {
     setExportando(true);
     setFalloExport(false);
     try {
-      await exportarHistorial({ jornadas: historial, bonos: bonosTodos, dias: diasTodos, premios, alumnosEn });
+      await exportarHistorial({ jornadas: historial, bonos: bonosTodos, dias: diasTodos, premios, alumnosEn, versionesEF });
     } catch (e) {
       console.error('[Exportar]', e);
       setFalloExport(true);
@@ -258,7 +259,7 @@ function Historial() {
 }
 
 function ReiniciarPuntos() {
-  const { reiniciarPuntos, esSuperadmin, historial, bonosTodos, diasTodos, premios, alumnosEn } = usePlant();
+  const { reiniciarPuntos, esSuperadmin, historial, bonosTodos, diasTodos, premios, alumnosEn, versionesEF } = usePlant();
   const [abierto, setAbierto] = useState(false);
   const [sinCopia, setSinCopia] = useState(false); // reiniciar aunque falle la descarga de la copia
   const [falloCopia, setFalloCopia] = useState(false);
@@ -274,7 +275,7 @@ function ReiniciarPuntos() {
     setFalloCopia(false);
     // Antes de borrar, se descarga una copia en Excel de todo el historial; si falla, no se borra nada (salvo que se tilde la casilla)
     try {
-      await exportarHistorial({ jornadas: historial, bonos: bonosTodos, dias: diasTodos, premios, alumnosEn });
+      await exportarHistorial({ jornadas: historial, bonos: bonosTodos, dias: diasTodos, premios, alumnosEn, versionesEF });
     } catch (e) {
       console.error('[Exportar]', e);
       if (!sinCopia) { setFalloCopia(true); setTrabajando(false); return; }
@@ -361,6 +362,7 @@ export default function PanelDocente() {
           <FormularioTareasExtra />
           <FormularioPremio />
           <DiasEspeciales />
+          <DiasEdFisicaEditor />
           <LideresEditor />
           <Bonos />
           {jornadasHoy.length === 0 && (

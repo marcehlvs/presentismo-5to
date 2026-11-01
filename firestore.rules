@@ -101,11 +101,12 @@ service cloud.firestore {
       allow write: if esDocente();
     }
 
-    // Configuración (líderes de cada día, con fecha de vigencia): la lee cualquiera con sesión y la escribe solo el docente
+    // Configuración con fecha de vigencia: líderes de cada día (lideres) y días de la semana con Ed. Física (edfisica).
+    // La lee cualquiera con sesión y la escribe solo el docente
     match /config/{id} {
       allow read: if signedIn();
       allow write: if esDocente()
-        && id == 'lideres'
+        && (id == 'lideres' || id == 'edfisica')
         && request.resource.data.keys().hasOnly(['versiones'])
         && request.resource.data.versiones is list
         && request.resource.data.versiones.size() <= 60;

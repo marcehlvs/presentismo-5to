@@ -126,6 +126,28 @@ describe('cuenta de Ed. Física', () => {
   });
 });
 
+describe('config (líderes y días de Ed. Física con fecha de vigencia)', () => {
+  const edf = { versiones: [{ desde: '2027-03-01', dias: [1, 3] }] };
+
+  it('el docente guarda los días de Ed. Física y los líderes', async () => {
+    await assertSucceeds(setDoc(doc(docente(), 'config', 'edfisica'), edf));
+    await assertSucceeds(setDoc(doc(docente(), 'config', 'lideres'), { versiones: [] }));
+  });
+
+  it('los alumnos y la cuenta de Ed. Física no los cambian, pero cualquiera con sesión los lee', async () => {
+    await sembrar((db) => setDoc(doc(db, 'config', 'edfisica'), edf));
+    await assertFails(setDoc(doc(alumno(), 'config', 'edfisica'), edf));
+    await assertFails(setDoc(doc(docenteEF(), 'config', 'edfisica'), edf));
+    await assertSucceeds(getDoc(doc(alumno(), 'config', 'edfisica')));
+  });
+
+  it('el docente no puede crear otros documentos de config ni con otra forma', async () => {
+    await assertFails(setDoc(doc(docente(), 'config', 'otro'), edf));
+    await assertFails(setDoc(doc(docente(), 'config', 'edfisica'), { versiones: [], extra: 1 }));
+    await assertFails(setDoc(doc(docente(), 'config', 'edfisica'), { versiones: 'lunes' }));
+  });
+});
+
 describe('superadmin', () => {
   it('borra jornadas', async () => {
     await assertSucceeds(deleteDoc(doc(superadmin(), 'jornadas', `${VIEJO}_1`)));

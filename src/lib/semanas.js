@@ -4,12 +4,13 @@ import { ALUMNOS, TURNOS } from '../data/mockData';
 export const PUNTOS_CHECKLIST = 10;
 export const PUNTOS_CIERRE = 10;
 export const PUNTOS_DESAFIO = 15;
-// Ed. Física: puntos extra del día. Hay Ed. Física los días de DIAS_EDFISICA_AUTO (desde EDFISICA_AUTO_DESDE) y los que el docente
-// marque a mano; un día se puede quitar (lluvia, feriado, profe ausente) desde "Días especiales".
+// Ed. Física: puntos extra del día. Hay Ed. Física los días de la semana que rijan (por defecto DIAS_EDFISICA_AUTO desde EDFISICA_AUTO_DESDE;
+// el docente los cambia con fecha de vigencia desde "Días especiales") y los que marque a mano; un día se puede quitar
+// (lluvia, feriado, profe ausente) desde "Días especiales".
 export const PUNTOS_EDFISICA = 10;
 // Largo máximo del texto de una tarea extra (antes 60: cortaba las preguntas)
 export const TAREA_EXTRA_MAX = 200;
-export const DIAS_EDFISICA_AUTO = [1, 5]; // 0 = domingo … 6 = sábado: lunes y viernes
+export const DIAS_EDFISICA_AUTO = [1, 5]; // 1 = lunes … 5 = viernes: lunes y viernes (valor inicial; después se cambia desde el panel)
 // Las jornadas anteriores a esta fecha no cambian (no tenían Ed. Física automática)
 export const EDFISICA_AUTO_DESDE = '2026-10-30';
 // Lo máximo que se puede sumar en una jornada común; los días con Ed. Física tienen PUNTOS_EDFISICA más
@@ -114,20 +115,67 @@ export function resumenPorSemana(jornadas, bonos, diasSinClase, diasEdFisica) {
   }));
 }
 
-// ¿Hay Ed. Física ese día? Lunes y viernes por defecto, salvo que el docente lo haya quitado (`sinEdFisica`) o no haya clase;
-// además cuentan los días que el docente marcó a mano (`edFisica`). `dias` son los documentos de /dias.
+// Días de la semana con Ed. Física, con fecha de vigencia: { desde: 'AAAA-MM-DD', dias: [1, 5] } (1 = lunes … 5 = viernes).
+// Se guardan en Firestore (config/edfisica) como una lista de versiones, igual que los líderes. La versión inicial (lunes y viernes
+// desde EDFISICA_AUTO_DESDE) siempre está: así un cambio nuevo nunca altera los días anteriores a su fecha.
+export const EDFISICA_VERSIONES_DEFECTO = [{ desde: EDFISICA_AUTO_DESDE, dias: DIAS_EDFISICA_AUTO }];
+
+const versionValida = (v) => typeof v?.desde === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v.desde) && Array.isArray(v.dias);
+
+// Todas las versiones que rigen (la inicial más las del docente; si comparten fecha, gana la del docente), de la más vieja a la más nueva
+export function versionesEdFisica(versiones) {
+  const porFecha = new Map(EDFISICA_VERSIONES_DEFECTO.map((v) => [v.desde, v]));
+  for (const v of versiones ?? []) if (versionValida(v)) porFecha.set(v.desde, v);
+  return [...porFecha.values()].sort((a, b) => a.desde.localeCompare(b.desde));
+}
+
+// Días de la semana (1 a 5) con Ed. Física automática en esa fecha: rige la última versión con "desde" menor o igual
+export function diasEdFisicaEn(versiones, fecha) {
+  const vigente = versionesEdFisica(versiones).filter((v) => v.desde <= fecha).pop();
+  return vigente ? vigente.dias.map(Number) : [];
+}
+
+const NOMBRES_DIAS = ['lunes', 'martes', 'miércoles', 'jueves', 'viernes'];
+// "los lunes y viernes", "los lunes, miércoles y viernes", "ningún día de la semana"
+export function textoDiasEdFisica(dias) {
+  const n = [...dias].sort((a, b) => a - b).map((d) => NOMBRES_DIAS[d - 1]).filter(Boolean);
+  if (n.length === 0) return 'ningún día de la semana';
+  return `los ${n.length === 1 ? n[0] : `${n.slice(0, -1).join(', ')} y ${n.at(-1)}`}`;
+}
+
+// Devuelve un mensaje de error en español, o '' si la lista de días está bien (puede estar vacía: sin Ed. Física automática)
+export function validarDiasEdFisica(dias) {
+  if (!Array.isArray(dias)) return 'Elegí los días.';
+  if (dias.some((d) => !Number.isInteger(d) || d < 1 || d > 5)) return 'Los días van de lunes a viernes.';
+  if (new Set(dias).size !== dias.length) return 'Hay un día repetido.';
+  return '';
+}
+
+// Agrega o reemplaza la versión de esa fecha (solo las del docente: la inicial no se guarda) y deja la lista ordenada
+export function conVersionEdFisica(versiones, desde, dias) {
+  const limpia = [...new Set(dias.map(Number))].sort((a, b) => a - b);
+  return [...(versiones ?? []).filter((v) => v.desde !== desde), { desde, dias: limpia }].sort((a, b) => a.desde.localeCompare(b.desde));
+}
+
+export const sinVersionEdFisica = (versiones, desde) => (versiones ?? []).filter((v) => v.desde !== desde);
+
+// ¿Hay Ed. Física ese día? Los días de la semana que rijan esa fecha (`versiones`, ver arriba), salvo que el docente lo haya quitado
+// (`sinEdFisica`) o no haya clase; además cuentan los días que el docente marcó a mano (`edFisica`). `dias` son los documentos de /dias.
 // Devuelve algo con `.has(fecha)`, como un Set, para usarlo igual que antes.
-export function crearDiasEdFisica(dias = []) {
+export function crearDiasEdFisica(dias = [], versiones = []) {
   const porFecha = new Map(dias.map((d) => [d.fecha, d]));
+  const vigentes = versionesEdFisica(versiones);
   return {
     has(fecha) {
       const d = porFecha.get(fecha);
       if (d?.sinClase || d?.sinEdFisica) return false;
       if (d?.edFisica) return true;
-      return fecha >= EDFISICA_AUTO_DESDE && DIAS_EDFISICA_AUTO.includes(deIso(fecha).getDay());
+      const v = vigentes.filter((x) => x.desde <= fecha).pop();
+      return !!v && v.dias.map(Number).includes(deIso(fecha).getDay());
     },
   };
 }
+
 // Suma los feriados nacionales (src/data/feriados.js) a los días con novedades que cargó el docente (documentos de /dias):
 // cada feriado es "sin clase" salvo que el docente haya dejado `conClase` ("Hay clase este día"). Así todo lo demás
 // (resumen, pendientes, Ed. Física, aviso a los alumnos) sigue leyendo `sinClase` como siempre.

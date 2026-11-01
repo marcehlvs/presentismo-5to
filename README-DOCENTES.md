@@ -43,7 +43,7 @@ Ed. Física se hace fuera del aula, así que tiene **su propio checklist**, sepa
 
 **Cómo se organiza**
 
-- **Qué días hay:** los **lunes y viernes**, desde el 30/10/2026 (las jornadas anteriores no cambian). No hace falta cargar fechas. En el panel docente, sección *Suplentes, días sin clase y Ed. Física*, se puede **quitar un lunes o viernes puntual** (lluvia, feriado, ausencia del profe) o **sumar otro día**, solo o repetido ("todos los miércoles hasta tal fecha"). Los días sin clase nunca tienen Ed. Física.
+- **Qué días hay:** por defecto los **lunes y viernes**, desde el 30/10/2026 (las jornadas anteriores no cambian). Para cambiarlos usá la sección *Días de Educación Física* del panel: marcás los días de la semana y desde qué fecha rigen; lo anterior queda como estaba. No hace falta cargar fechas. En *Suplentes, días sin clase y Ed. Física* se puede **quitar un día puntual** (lluvia, feriado, ausencia del profe) o **sumar otro día**, solo o repetido ("todos los miércoles hasta tal fecha"). Los días sin clase nunca tienen Ed. Física.
 - **Quién la aprueba:** cualquier docente con acceso al panel, en el bloque *Educación Física* de cada líder, o la **cuenta de Ed. Física**, que ve un panel reducido con solo ese bloque (ver *Cuentas y permisos*).
 - **Puntos:** 10 al equipo cuando se aprueba todo.
 - **Sin ventaja para nadie:** el equipo al que le toca un día con Ed. Física tiene más puntos posibles. Para que no se favorezca, el ranking semanal compara **puntos sobre puntos posibles** (se muestra como "puntos por jornada común", hasta 35).

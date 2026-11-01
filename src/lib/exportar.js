@@ -10,9 +10,9 @@ const fechaCelda = (iso) => ({ value: deIso(iso), type: Date, format: 'dd/mm/yyy
 const vacioNull = (v) => (v === '' || v == null ? null : v);
 
 // Arma las hojas del libro a partir de lo que ya tiene cargado el panel docente (no consulta nada más)
-export function armarHojas({ jornadas, bonos, dias, premios, alumnosEn }) {
+export function armarHojas({ jornadas, bonos, dias, premios, alumnosEn, versionesEF = [] }) {
   const sinClase = new Set(dias.filter((d) => d.sinClase).map((d) => d.fecha));
-  const edFisica = crearDiasEdFisica(dias);
+  const edFisica = crearDiasEdFisica(dias, versionesEF);
   // El líder de cada fecha (los líderes pueden cambiar con el tiempo); sin la función, rige la lista de mockData.js
   const lider = (id, fecha) => (alumnosEn && fecha ? alumnosEn(fecha) : ALUMNOS).find((a) => a.id === Number(id)) ?? liderBase(id);
   const suplenteDe = (fecha, jefeId) => dias.find((d) => d.fecha === fecha)?.suplentes?.[String(jefeId)];
