@@ -79,4 +79,23 @@ describe('puntos y ranking semanal', () => {
     expect(e1.puntos).toBe(55);
     expect(e1.bonos).toBe(20);
   });
+
+  it('un equipo sin jornadas no compite aunque tenga un bono grande', () => {
+    const js = [completa('2026-11-02', 1), completa('2026-11-04', 3)];
+    // e2 no tuvo jornada (su día fue feriado y no lo recuperó) pero recibió un bono de 100
+    const r = resumenTurnos(js, { bonos: [{ turnoId: 'e2', puntos: 100 }] });
+    const e2 = r.lista.find((t) => t.id === 'e2');
+    expect(e2.puntos).toBe(100); // el bono se muestra
+    expect(e2.compite).toBe(false);
+    expect(e2.promedio).toBe(0);
+    expect(r.lista.at(-1).compite).toBe(false); // y queda al final de la lista
+    expect(r.ganador).toBeNull(); // e1 y e3 empatan en 35
+    expect(r.empate).toBe(true);
+  });
+
+  it('si ningún equipo tuvo jornadas no hay ganador ni empate', () => {
+    const r = resumenTurnos([], { bonos: [{ turnoId: 'e1', puntos: 20 }] });
+    expect(r.ganador).toBeNull();
+    expect(r.empate).toBe(false);
+  });
 });

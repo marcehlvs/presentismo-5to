@@ -26,7 +26,7 @@ function ErrorBanner({ mensaje }) {
 const esModoPantalla = () => window.location.pathname.replace(/\/+$/, '') === '/pantalla';
 
 function Pantalla() {
-  const { jefe, authListo, esDocente, esDocenteEF, cuentaSinPermiso, logoutDocente, error } = usePlant();
+  const { jefe, authListo, esDocente, esDocenteEF, cuentaSinPermiso, perfilNoCargo, logoutDocente, error } = usePlant();
 
   if (!authListo) return <Cargando />;
   if (esModoPantalla()) {
@@ -39,6 +39,15 @@ function Pantalla() {
   }
   if (esDocente) return <Suspense fallback={<Cargando />}><PanelDocente /></Suspense>;
   if (esDocenteEF) return <Suspense fallback={<Cargando />}><PanelEdFisica /></Suspense>;
+  if (perfilNoCargo) {
+    return (
+      <Aviso>
+        No se pudo verificar tu cuenta docente (probablemente falló la conexión).{' '}
+        <button onClick={() => window.location.reload()} className="underline">Reintentar</button>{' · '}
+        <button onClick={logoutDocente} className="underline">Cerrar sesión</button>
+      </Aviso>
+    );
+  }
   if (cuentaSinPermiso) {
     return (
       <Aviso>

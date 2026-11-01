@@ -82,14 +82,18 @@ export function resumenTurnos(jornadas, { bonos = [], diasSinClase, diasEdFisica
     r[b.turnoId].puntos += b.puntos;
     r[b.turnoId].bonos += b.puntos;
   }
+  // Un equipo sin ninguna jornada en la semana (por ejemplo, su día fue feriado y no lo recuperó) no compite por el premio:
+  // con solo un bono, su "promedio" sería puntos crudos y le ganaría a equipos que sí trabajaron. Sus bonos igual suman en `puntos`.
   const lista = Object.values(r).map((t) => ({
     ...t,
-    promedio: t.jornadas === 0 ? t.puntos : (t.puntos / t.posibles) * PUNTOS_JORNADA,
+    compite: t.jornadas > 0,
+    promedio: t.jornadas === 0 ? 0 : (t.puntos / t.posibles) * PUNTOS_JORNADA,
   }));
   const clave = (t) => (CRITERIO_GANADOR === 'total' ? t.puntos : t.promedio);
-  lista.sort((a, b) => clave(b) - clave(a));
-  const mejor = clave(lista[0]);
-  const empatados = lista.filter((t) => clave(t) === mejor);
+  // Los que compiten van primero, ordenados por el criterio; los que no, al final
+  lista.sort((a, b) => (b.compite - a.compite) || (clave(b) - clave(a)));
+  const mejor = lista[0].compite ? clave(lista[0]) : 0;
+  const empatados = lista.filter((t) => t.compite && clave(t) === mejor);
   return {
     lista,
     ganador: mejor > 0 && empatados.length === 1 ? empatados[0] : null,

@@ -51,7 +51,7 @@ export function HojaResumen({ d, alumnosEn }) {
         </tbody>
       </table>
       <p className="mt-1 text-xs">
-        {CRITERIO_GANADOR === 'promedio' ? 'Gana el equipo con más puntos por jornada' : 'Gana el equipo con más puntos'} (los puntos incluyen los bonos). Los días sin clase no cuentan.
+        {CRITERIO_GANADOR === 'promedio' ? 'Gana el equipo con más puntos por jornada' : 'Gana el equipo con más puntos'} (los puntos incluyen los bonos). Los días sin clase no cuentan, y un equipo sin ninguna jornada en la semana no compite por el premio.
       </p>
 
       <p className="mt-4 font-display text-xl font-bold">Detalle por día</p>

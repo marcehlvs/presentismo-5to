@@ -90,6 +90,7 @@ export function PlantProvider({ children }) {
   const [esSuperadmin, setEsSuperadmin] = useState(false); // docentes/{uid}.rol = 'superadmin': docente completo + "Volver a cero"
   const [esDocenteEF, setEsDocenteEF] = useState(false); // cuenta docente de Ed. Física: solo aprueba el bloque de Ed. Física
   const [authListo, setAuthListo] = useState(false);
+  const [perfilNoCargo, setPerfilNoCargo] = useState(false); // no se pudo leer docentes/{uid} (red): no es lo mismo que "sin permisos"
   const [error, setError] = useState('');
   const [puntajes, setPuntajes] = useState({});
   const [jornadasHoy, setJornadasHoy] = useState([]);
@@ -123,12 +124,14 @@ export function PlantProvider({ children }) {
           setEsDocente(false);
           setEsDocenteEF(false);
           setEsSuperadmin(false);
+          setPerfilNoCargo(false);
           try { await signInAnonymously(auth); } catch (e) { setError(mensajeError(e)); setAuthListo(true); }
           return;
         }
         let docente = false;
         let soloEF = false;
         let sup = false;
+        let noCargo = false;
         if (!u.isAnonymous) {
           try {
             const s = await getDoc(doc(db, 'docentes', u.uid));
@@ -136,8 +139,14 @@ export function PlantProvider({ children }) {
             soloEF = s.exists() && s.data().rol === 'edfisica';
             docente = s.exists() && !soloEF;
             sup = docente && s.data().rol === 'superadmin';
-          } catch { docente = false; soloEF = false; sup = false; }
+          } catch (e) {
+            // Solo un rechazo de las reglas significa "esta cuenta no es docente"; si fue la red, se avisa aparte
+            docente = false; soloEF = false; sup = false;
+            noCargo = e?.code !== 'permission-denied';
+            if (noCargo) console.error('[Firebase] no se pudo leer docentes/{uid}', e);
+          }
         }
+        setPerfilNoCargo(noCargo);
         setEsDocente(docente);
         setEsDocenteEF(soloEF);
         setEsSuperadmin(sup);
@@ -510,7 +519,8 @@ export function PlantProvider({ children }) {
     desafioResuelto: actual.desafioAprobado === true, respuestaEnviada: actual.respuesta ?? null, rechazos: actual.rechazos ?? 0,
     ranking, puntosDesafio: PUNTOS_DESAFIO, puntosChecklist: PUNTOS_CHECKLIST, puntosCierre: PUNTOS_CIERRE, puntosEdFisica: PUNTOS_EDFISICA,
     iniciarTurno, cerrarTurno, toggleTarea, enviarRespuesta, guardarAsistencia, publicarTareasExtra,
-    authListo, esDocente, esSuperadmin, esDocenteEF, cuentaSinPermiso: !!user && !user.isAnonymous && !esDocente && !esDocenteEF, error,
+    authListo, esDocente, esSuperadmin, esDocenteEF, perfilNoCargo,
+    cuentaSinPermiso: !!user && !user.isAnonymous && !esDocente && !esDocenteEF && !perfilNoCargo, error,
     desafioHoy, criterioDocente, publicarDesafio,
     semana, resumenSemana, premioSemana, historial, premios, publicarPremio, reiniciarPuntos,
     diaHoy, hoySinClase, suplentesHoy, jornadasSemana, bonosSemana, diasTodos, bonosTodos, sinClaseTodos, edFisicaTodos,

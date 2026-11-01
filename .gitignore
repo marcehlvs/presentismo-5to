@@ -4,3 +4,7 @@ dist
 .env.*
 !.env.example
 .firebase
+# Registros de los emuladores de Firebase
+firestore-debug.log
+firebase-debug.log
+ui-debug.log
