@@ -351,8 +351,8 @@ export default function PanelDocente() {
         </div>
       </header>
 
-      <main className="max-w-6xl mx-auto px-4 py-6 grid gap-6 lg:grid-cols-[1fr_360px] items-start">
-        <div className="space-y-6">
+      <main className="max-w-6xl mx-auto px-4 py-6 grid gap-6 grid-cols-[minmax(0,1fr)] lg:grid-cols-[minmax(0,1fr)_360px] items-start">
+        <div className="space-y-6 min-w-0">
           {error && <p role="alert" className="text-alarma font-semibold">{error}</p>}
           <AvisoSinClase />
           <Pendientes />

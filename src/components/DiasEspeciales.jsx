@@ -79,7 +79,7 @@ export default function DiasEspeciales() {
         <input type="date" value={f} onChange={(e) => setF(e.target.value)} className={campo} />
       </label>
 
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
         <div className="p-3 rounded-md border-2 border-acero/20 space-y-3">
           <h3 className="font-display text-xl font-bold">Suplente del día</h3>
           <p className="text-sm text-acero/70">Si el líder falta, el suplente toma su turno y los puntos van igual al equipo del líder.</p>
@@ -162,7 +162,7 @@ export default function DiasEspeciales() {
             {edFisica && <span className="text-sm font-semibold text-operativa">Hay Ed. Física ese día ✓</span>}
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-[1fr_1fr_auto] items-end">
+          <div className="grid gap-3 grid-cols-1 sm:grid-cols-[1fr_1fr_auto] items-end">
             <label className="block">
               <span className="block text-sm font-medium mb-1">Repetir todos los…</span>
               <select value={diaEF} onChange={(e) => { setDiaEF(e.target.value); setMsjEF(''); }} className={campo}>

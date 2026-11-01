@@ -1,8 +1,14 @@
 # Historial de versiones — Operación: Jefe de Planta
 
-Aplicación desarrollada por **Juan Marcelo Bejarano**. La versión actual es la **1.4.1** (1 de noviembre de 2026).
+Aplicación desarrollada por **Juan Marcelo Bejarano**. La versión actual es la **1.4.2** (1 de noviembre de 2026).
 
 Cada versión indica qué cambió para los docentes y si hubo que publicar las reglas de Firestore (`firebase deploy --only firestore:rules`; siempre antes que la app).
+
+## [1.4.2] — 1/11/2026
+**Para los docentes**
+- **Arreglo del panel docente y de la pantalla del jefe en el celular:** la página se desbordaba hacia la derecha (tarjetas cortadas, encabezado que no cubría todo el ancho). Ahora todo se ajusta al ancho de la pantalla y las tablas se desplazan dentro de su propia tarjeta.
+
+**Técnico:** las grillas con columnas por breakpoint ahora declaran su columna base (`grid-cols-1` o `minmax(0,1fr)`), y una prueba (`src/lib/layout.test.js`) evita que vuelva a pasar. Sin cambios en las reglas.
 
 ## [1.4.1] — 1/11/2026
 **Para los docentes**

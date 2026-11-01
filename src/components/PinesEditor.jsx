@@ -23,7 +23,7 @@ function FilaPin({ lider }) {
   };
 
   return (
-    <li className="grid gap-2 sm:grid-cols-[1fr_7rem_auto] items-center border-b border-acero/15 pb-2">
+    <li className="grid gap-2 grid-cols-1 sm:grid-cols-[1fr_7rem_auto] items-center border-b border-acero/15 pb-2">
       <div className="flex items-center gap-2 min-w-0">
         <Avatar emoji={lider.avatar} className="size-9 text-xl" />
         <span className="truncate">{lider.dia} · {lider.nombre} · {equipoDe(lider)?.nombre}</span>

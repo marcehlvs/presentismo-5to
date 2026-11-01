@@ -6,14 +6,15 @@ Cada día un alumno es el **Jefe de Planta**. Marca lo que hizo, **el docente lo
 
 > La guía técnica para instalar y publicar la app está en [`README.md`](README.md). Este documento explica qué hace la app y cómo se usa en el día a día.
 
-**Versión 1.4.1** · Desarrollada por **Juan Marcelo Bejarano** · Historial completo de cambios en [`CHANGELOG.md`](CHANGELOG.md).
+**Versión 1.4.2** · Desarrollada por **Juan Marcelo Bejarano** · Historial completo de cambios en [`CHANGELOG.md`](CHANGELOG.md).
 
-## Novedades de esta versión (1.1.0 a 1.4.1)
+## Novedades de esta versión (1.1.0 a 1.4.2)
 - **Puntos:** quitar una aprobación resta los puntos; la bandeja *Pendientes de días anteriores* permite aprobar hasta 21 días atrás; *Verificar puntos* compara la tabla con las jornadas y los bonos y corrige diferencias.
 - **Calendario:** los feriados nacionales ya vienen marcados como días sin clase (se puede habilitar clase en uno puntual); los días de Educación Física se cambian desde el panel con fecha de vigencia.
 - **Premio semanal:** un equipo sin ninguna jornada en la semana no compite.
 - **Líderes:** cada Jefe de Planta tiene un **avatar** y, si querés, un **PIN de 4 números** para que nadie tome el turno de otro.
 - **Seguridad:** los alumnos solo pueden escribir jornadas de ayer, hoy o mañana.
+- **Celular:** el panel docente y la pantalla del jefe se ajustan al ancho del teléfono (antes se cortaban a la derecha).
 - **Contraseña visible a pedido:** en el acceso docente y en el PIN hay un botón (ojito) para mostrar u ocultar lo que escribís.
 
 ---

@@ -56,7 +56,7 @@ export default function Dashboard() {
         </div>
       </header>
 
-      <main className="max-w-6xl mx-auto px-4 py-6 grid gap-6 lg:grid-cols-[1fr_360px] items-start">
+      <main className="max-w-6xl mx-auto px-4 py-6 grid gap-6 grid-cols-[minmax(0,1fr)] lg:grid-cols-[minmax(0,1fr)_360px] items-start">
         <AvisoSinClase className="lg:col-span-2" />
         <div className="space-y-6">
           <Checklist momento="apertura" titulo="Checklist matutino" />

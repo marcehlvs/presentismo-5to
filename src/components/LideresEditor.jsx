@@ -57,7 +57,7 @@ export default function LideresEditor() {
         )}
         <div className="space-y-2">
           {items.map((x, i) => (
-            <div key={x.id} className="grid gap-2 sm:grid-cols-[9rem_8rem_1fr_11rem] items-center">
+            <div key={x.id} className="grid gap-2 grid-cols-1 sm:grid-cols-[9rem_8rem_1fr_11rem] items-center">
               <select value={x.dia} onChange={(e) => cambiar(i, 'dia', e.target.value)} aria-label={`Día del equipo ${nombreEquipo(x.turno)}`} className={campo}>
                 {DIAS_CLASE.map((d) => <option key={d}>{d}</option>)}
               </select>

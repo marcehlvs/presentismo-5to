@@ -57,7 +57,7 @@ export default function Bonos() {
         ))}
       </div>
 
-      <form onSubmit={enviar} className="grid gap-3 sm:grid-cols-2">
+      <form onSubmit={enviar} className="grid gap-3 grid-cols-1 sm:grid-cols-2">
         <label className="block">
           <span className="block text-sm font-medium mb-1">Equipo</span>
           <select value={f.turnoId} onChange={(e) => cambiar('turnoId', e.target.value)} className={campo}>
