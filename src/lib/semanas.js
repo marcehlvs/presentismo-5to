@@ -1,3 +1,4 @@
+import { FERIADOS, FERIADOS_DESDE } from '../data/feriados';
 import { ALUMNOS, TURNOS } from '../data/mockData';
 
 export const PUNTOS_CHECKLIST = 10;
@@ -126,4 +127,24 @@ export function crearDiasEdFisica(dias = []) {
       return fecha >= EDFISICA_AUTO_DESDE && DIAS_EDFISICA_AUTO.includes(deIso(fecha).getDay());
     },
   };
+}
+// Suma los feriados nacionales (src/data/feriados.js) a los días con novedades que cargó el docente (documentos de /dias):
+// cada feriado es "sin clase" salvo que el docente haya dejado `conClase` ("Hay clase este día"). Así todo lo demás
+// (resumen, pendientes, Ed. Física, aviso a los alumnos) sigue leyendo `sinClase` como siempre.
+// `desde` y `hasta` acotan las fechas (para la semana en curso); los días de la lista que no son feriado quedan igual.
+export function aplicarFeriados(dias, { desde = FERIADOS_DESDE, hasta = '9999-12-31', feriados = FERIADOS } = {}) {
+  const enRango = feriados.filter((f) => f.fecha >= FERIADOS_DESDE && f.fecha >= desde && f.fecha <= hasta);
+  const porFecha = new Map(enRango.map((f) => [f.fecha, f]));
+  const vistos = new Set();
+  const lista = dias.map((d) => {
+    const f = porFecha.get(d.fecha);
+    if (!f) return d;
+    vistos.add(d.fecha);
+    if (d.conClase) return { ...d, sinClase: false, feriado: f.motivo };
+    return { ...d, sinClase: true, motivo: d.motivo || f.motivo, feriado: f.motivo };
+  });
+  for (const f of enRango) {
+    if (!vistos.has(f.fecha)) lista.push({ id: f.fecha, fecha: f.fecha, sinClase: true, motivo: f.motivo, feriado: f.motivo, virtual: true });
+  }
+  return lista;
 }

@@ -66,7 +66,7 @@ Se entra desde *Acceso docente* con correo y contraseña. El panel permite:
 - **Otorgar bonos** de 1 a 100 puntos a un equipo, con motivo y fecha (por ejemplo "Semana perfecta" o "Cero llegadas tarde"). Un bono cargado por error se puede quitar.
 - **Gestionar situaciones del día a día:**
   - **Suplente:** si el líder falta, se escribe quién lo reemplaza. Los puntos van igual al equipo del líder.
-  - **Día sin clase:** ese día no se inicia turno, no se aprueban tareas y no cuenta para el promedio, así un feriado no perjudica a nadie.
+  - **Día sin clase:** ese día no se inicia turno, no se aprueban tareas y no cuenta para el promedio, así un feriado no perjudica a nadie. Los **feriados nacionales** ya vienen marcados solos; si en uno sí hay clase, elegí la fecha y tocá *Hay clase este día*. Los días no laborables y los puentes no vienen cargados: se marcan a mano.
   - **Cambio de líderes:** se editan nombres y días desde el panel, con fecha de vigencia. Cada equipo conserva su puesto y sus puntos, y el historial muestra quién fue líder cada día.
 
 ---

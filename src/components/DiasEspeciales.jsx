@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { usePlant } from '../context/PlantContext';
+import { FERIADOS, FERIADOS_DESDE } from '../data/feriados';
 import { TURNOS, jefeDelDia } from '../data/mockData';
 import { DIAS_CLASE } from '../lib/lideres';
 import { deIso, etiquetaDia, puntosDeJornada, sumarDias } from '../lib/semanas';
@@ -45,11 +46,13 @@ export default function DiasEspeciales() {
   // Los días con Ed. Física se listan aparte: si no, llenarían la lista y taparían los sin clase y los suplentes
   const lista = useMemo(
     () => diasTodos
-      .filter((d) => d.sinClase || Object.keys(d.suplentes ?? {}).length > 0)
+      .filter((d) => !d.virtual && (d.sinClase || d.conClase || Object.keys(d.suplentes ?? {}).length > 0))
       .sort((a, b) => b.fecha.localeCompare(a.fecha))
       .slice(0, 10),
     [diasTodos]
   );
+  // Feriados nacionales precargados que vienen (se marcan solos como sin clase)
+  const proximosFeriados = useMemo(() => FERIADOS.filter((x) => x.fecha >= fecha && x.fecha >= FERIADOS_DESDE).slice(0, 4), [fecha]);
   // Fechas con Ed. Física que se cargaron a mano (los lunes y viernes ya vienen solos) y fechas quitadas
   const fechasEF = useMemo(() => diasTodos.filter((d) => d.edFisica).map((d) => d.fecha).sort(), [diasTodos]);
   const proximasEF = useMemo(() => fechasEF.filter((x) => x >= fecha).slice(0, 8), [fechasEF, fecha]);
@@ -109,7 +112,12 @@ export default function DiasEspeciales() {
 
         <div className="p-3 rounded-md border-2 border-acero/20 space-y-3">
           <h3 className="font-display text-xl font-bold">Día sin clase</h3>
-          <p className="text-sm text-acero/70">Feriado o suspensión: ese día no suma puntos ni cuenta como jornada para el promedio de nadie.</p>
+          <p className="text-sm text-acero/70">Feriado o suspensión: ese día no suma puntos ni cuenta como jornada para el promedio de nadie. Los feriados nacionales ya vienen marcados solos.</p>
+          {dia?.feriado && (
+            <p className="text-sm font-semibold">
+              Feriado nacional: {dia.feriado}.{dia.conClase ? ' Habilitaste clase este día.' : ''}
+            </p>
+          )}
           <label className="block">
             <span className="block text-sm font-medium mb-1">Motivo (opcional)</span>
             <input value={motivo} onChange={(e) => { setMotivo(e.target.value); setEstado(''); }} maxLength={60} placeholder="Ej: Feriado nacional" className={campo} />
@@ -123,8 +131,10 @@ export default function DiasEspeciales() {
             {sinClase ? (
               <>
                 <button onClick={() => correr(() => marcarSinClase(f, true, motivo))} disabled={motivo.trim() === (dia?.motivo ?? '')} className={`${btn} bg-acero text-seguridad`}>Actualizar motivo</button>
-                <button onClick={() => correr(() => marcarSinClase(f, false))} className={btn}>Quitar marca</button>
+                <button onClick={() => correr(() => marcarSinClase(f, false))} className={btn}>{dia?.feriado ? 'Hay clase este día' : 'Quitar marca'}</button>
               </>
+            ) : dia?.conClase ? (
+              <button onClick={() => correr(() => marcarSinClase(f, true, dia.feriado))} className={`${btn} bg-acero text-seguridad`}>Volver a marcar sin clase</button>
             ) : (
               <button onClick={() => correr(() => marcarSinClase(f, true, motivo))} disabled={!f} className={`${btn} bg-acero text-seguridad`}>Marcar sin clase</button>
             )}
@@ -179,6 +189,11 @@ export default function DiasEspeciales() {
       {estado === 'ok' && <p role="status" className="mt-3 text-operativa font-semibold">Guardado ✓</p>}
 
       <h3 className="font-display text-xl font-bold mt-5 mb-2">Días cargados</h3>
+      {proximosFeriados.length > 0 && (
+        <p className="text-sm mb-2">
+          Próximos feriados (ya marcados sin clase): <b>{proximosFeriados.map((x) => etiquetaDia(x.fecha)).join(' · ')}</b>. Si ese día sí hay clase, elegí la fecha y tocá «Hay clase este día».
+        </p>
+      )}
       {lista.length === 0 ? (
         <p className="text-sm">Todavía no cargaste ningún día sin clase ni suplente.</p>
       ) : (
@@ -187,6 +202,7 @@ export default function DiasEspeciales() {
             <li key={d.id}>
               <b>{etiquetaDia(d.fecha)}</b>
               {d.sinClase && <> · Sin clase{d.motivo ? ` (${d.motivo})` : ''}</>}
+              {d.conClase && <> · Feriado con clase{d.feriado ? ` (${d.feriado})` : ''}</>}
               {Object.entries(d.suplentes ?? {}).map(([id, n]) => <span key={id}> · Suplente: {n} (por {nombreLider(id, d.fecha)})</span>)}
             </li>
           ))}

@@ -1,0 +1,338 @@
+From d041b30a6941b738645626b12840f40dd3b37b90 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 1 Nov 2026 12:08:20 +0000
+Subject: [PATCH] =?UTF-8?q?Feriados=20nacionales=20precargados=20como=20d?=
+ =?UTF-8?q?=C3=ADas=20sin=20clase=20(con=20opci=C3=B3n=20'Hay=20clase=20es?=
+ =?UTF-8?q?te=20d=C3=ADa')?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+---
+ README-DOCENTES.md                |  2 +-
+ README.md                         |  1 +
+ src/components/DiasEspeciales.jsx | 22 ++++++++--
+ src/context/PlantContext.jsx      | 20 ++++++---
+ src/data/feriados.js              | 33 ++++++++++++++
+ src/lib/feriados.test.js          | 71 +++++++++++++++++++++++++++++++
+ src/lib/semanas.js                | 23 +++++++++-
+ 7 files changed, 161 insertions(+), 11 deletions(-)
+ create mode 100644 src/data/feriados.js
+ create mode 100644 src/lib/feriados.test.js
+
+diff --git a/README-DOCENTES.md b/README-DOCENTES.md
+index bc7ce3b..8918d69 100644
+--- a/README-DOCENTES.md
++++ b/README-DOCENTES.md
+@@ -66,7 +66,7 @@ Se entra desde *Acceso docente* con correo y contraseña. El panel permite:
+ - **Otorgar bonos** de 1 a 100 puntos a un equipo, con motivo y fecha (por ejemplo "Semana perfecta" o "Cero llegadas tarde"). Un bono cargado por error se puede quitar.
+ - **Gestionar situaciones del día a día:**
+   - **Suplente:** si el líder falta, se escribe quién lo reemplaza. Los puntos van igual al equipo del líder.
+-  - **Día sin clase:** ese día no se inicia turno, no se aprueban tareas y no cuenta para el promedio, así un feriado no perjudica a nadie.
++  - **Día sin clase:** ese día no se inicia turno, no se aprueban tareas y no cuenta para el promedio, así un feriado no perjudica a nadie. Los **feriados nacionales** ya vienen marcados solos; si en uno sí hay clase, elegí la fecha y tocá *Hay clase este día*. Los días no laborables y los puentes no vienen cargados: se marcan a mano.
+   - **Cambio de líderes:** se editan nombres y días desde el panel, con fecha de vigencia. Cada equipo conserva su puesto y sus puntos, y el historial muestra quién fue líder cada día.
+ 
+ ---
+diff --git a/README.md b/README.md
+index ad5f86f..6267c35 100644
+--- a/README.md
++++ b/README.md
+@@ -45,6 +45,7 @@ Hay un equipo por cada Jefe de Planta (su líder), y cada uno tiene su día de l
+ En el panel docente, "Suplentes y días sin clase" trabaja por fecha (colección `dias`):
+ - **Suplente:** si el líder falta, el docente escribe quién lo reemplaza. El suplente entra desde el inicio (ve su nombre en la lista) y usa la jornada del líder, así que los puntos van igual al equipo del líder.
+ - **Día sin clase:** ese día no se puede iniciar turno, no se aprueban tareas y sus jornadas no cuentan para el promedio ni para el ranking semanal. Si el día ya tenía puntos, siguen en la tabla de posiciones (el panel avisa). El líder de un día sin clase puede hacer su jornada otro día de la semana y cuenta normal.
++- **Feriados nacionales precargados:** `src/data/feriados.js` lista los feriados desde el 23/11/2026 hasta fines de 2027 (Ley 27.399); se marcan solos como día sin clase y ese día no tiene Ed. Física. Si en un feriado sí hay clase, el docente elige la fecha y toca "Hay clase este día" (se guarda `conClase` en `dias/{fecha}`, solo para esa fecha). Los días no laborables y los puentes turísticos no se precargan: se marcan a mano. Para 2027 faltan los puentes que fija el Gobierno por decreto y el eventual traslado del 20/11/2027: agregarlos en ese archivo, ordenados por fecha (la prueba `src/lib/feriados.test.js` revisa el formato).
+ - **Bonos:** puntos extra (1 a 100) para un equipo, con motivo y fecha (colección `bonos`). Suman a la tabla de posiciones y al ranking de la semana de esa fecha; un bono cargado por error se puede quitar y se restan los puntos. Los atajos "Semana perfecta" y "Cero llegadas tarde" están en `BONOS_SUGERIDOS` (`src/lib/semanas.js`).
+ - "Volver a cero" con la casilla de historial también borra los bonos; los días sin clase y suplentes se conservan.
+ 
+diff --git a/src/components/DiasEspeciales.jsx b/src/components/DiasEspeciales.jsx
+index 01914d7..b73e0e5 100644
+--- a/src/components/DiasEspeciales.jsx
++++ b/src/components/DiasEspeciales.jsx
+@@ -1,5 +1,6 @@
+ import { useEffect, useMemo, useState } from 'react';
+ import { usePlant } from '../context/PlantContext';
++import { FERIADOS, FERIADOS_DESDE } from '../data/feriados';
+ import { TURNOS, jefeDelDia } from '../data/mockData';
+ import { DIAS_CLASE } from '../lib/lideres';
+ import { deIso, etiquetaDia, puntosDeJornada, sumarDias } from '../lib/semanas';
+@@ -45,11 +46,13 @@ export default function DiasEspeciales() {
+   // Los días con Ed. Física se listan aparte: si no, llenarían la lista y taparían los sin clase y los suplentes
+   const lista = useMemo(
+     () => diasTodos
+-      .filter((d) => d.sinClase || Object.keys(d.suplentes ?? {}).length > 0)
++      .filter((d) => !d.virtual && (d.sinClase || d.conClase || Object.keys(d.suplentes ?? {}).length > 0))
+       .sort((a, b) => b.fecha.localeCompare(a.fecha))
+       .slice(0, 10),
+     [diasTodos]
+   );
++  // Feriados nacionales precargados que vienen (se marcan solos como sin clase)
++  const proximosFeriados = useMemo(() => FERIADOS.filter((x) => x.fecha >= fecha && x.fecha >= FERIADOS_DESDE).slice(0, 4), [fecha]);
+   // Fechas con Ed. Física que se cargaron a mano (los lunes y viernes ya vienen solos) y fechas quitadas
+   const fechasEF = useMemo(() => diasTodos.filter((d) => d.edFisica).map((d) => d.fecha).sort(), [diasTodos]);
+   const proximasEF = useMemo(() => fechasEF.filter((x) => x >= fecha).slice(0, 8), [fechasEF, fecha]);
+@@ -109,7 +112,12 @@ export default function DiasEspeciales() {
+ 
+         <div className="p-3 rounded-md border-2 border-acero/20 space-y-3">
+           <h3 className="font-display text-xl font-bold">Día sin clase</h3>
+-          <p className="text-sm text-acero/70">Feriado o suspensión: ese día no suma puntos ni cuenta como jornada para el promedio de nadie.</p>
++          <p className="text-sm text-acero/70">Feriado o suspensión: ese día no suma puntos ni cuenta como jornada para el promedio de nadie. Los feriados nacionales ya vienen marcados solos.</p>
++          {dia?.feriado && (
++            <p className="text-sm font-semibold">
++              Feriado nacional: {dia.feriado}.{dia.conClase ? ' Habilitaste clase este día.' : ''}
++            </p>
++          )}
+           <label className="block">
+             <span className="block text-sm font-medium mb-1">Motivo (opcional)</span>
+             <input value={motivo} onChange={(e) => { setMotivo(e.target.value); setEstado(''); }} maxLength={60} placeholder="Ej: Feriado nacional" className={campo} />
+@@ -123,8 +131,10 @@ export default function DiasEspeciales() {
+             {sinClase ? (
+               <>
+                 <button onClick={() => correr(() => marcarSinClase(f, true, motivo))} disabled={motivo.trim() === (dia?.motivo ?? '')} className={`${btn} bg-acero text-seguridad`}>Actualizar motivo</button>
+-                <button onClick={() => correr(() => marcarSinClase(f, false))} className={btn}>Quitar marca</button>
++                <button onClick={() => correr(() => marcarSinClase(f, false))} className={btn}>{dia?.feriado ? 'Hay clase este día' : 'Quitar marca'}</button>
+               </>
++            ) : dia?.conClase ? (
++              <button onClick={() => correr(() => marcarSinClase(f, true, dia.feriado))} className={`${btn} bg-acero text-seguridad`}>Volver a marcar sin clase</button>
+             ) : (
+               <button onClick={() => correr(() => marcarSinClase(f, true, motivo))} disabled={!f} className={`${btn} bg-acero text-seguridad`}>Marcar sin clase</button>
+             )}
+@@ -179,6 +189,11 @@ export default function DiasEspeciales() {
+       {estado === 'ok' && <p role="status" className="mt-3 text-operativa font-semibold">Guardado ✓</p>}
+ 
+       <h3 className="font-display text-xl font-bold mt-5 mb-2">Días cargados</h3>
++      {proximosFeriados.length > 0 && (
++        <p className="text-sm mb-2">
++          Próximos feriados (ya marcados sin clase): <b>{proximosFeriados.map((x) => etiquetaDia(x.fecha)).join(' · ')}</b>. Si ese día sí hay clase, elegí la fecha y tocá «Hay clase este día».
++        </p>
++      )}
+       {lista.length === 0 ? (
+         <p className="text-sm">Todavía no cargaste ningún día sin clase ni suplente.</p>
+       ) : (
+@@ -187,6 +202,7 @@ export default function DiasEspeciales() {
+             <li key={d.id}>
+               <b>{etiquetaDia(d.fecha)}</b>
+               {d.sinClase && <> · Sin clase{d.motivo ? ` (${d.motivo})` : ''}</>}
++              {d.conClase && <> · Feriado con clase{d.feriado ? ` (${d.feriado})` : ''}</>}
+               {Object.entries(d.suplentes ?? {}).map(([id, n]) => <span key={id}> · Suplente: {n} (por {nombreLider(id, d.fecha)})</span>)}
+             </li>
+           ))}
+diff --git a/src/context/PlantContext.jsx b/src/context/PlantContext.jsx
+index a423ed5..8177200 100644
+--- a/src/context/PlantContext.jsx
++++ b/src/context/PlantContext.jsx
+@@ -4,9 +4,10 @@ import {
+   collection, deleteField, doc, getDoc, increment, getDocs, onSnapshot, query, runTransaction, serverTimestamp, setDoc, where, writeBatch,
+ } from 'firebase/firestore';
+ import { auth, db } from '../firebase';
++import { feriadoDe } from '../data/feriados';
+ import { ALUMNOS, TURNOS, TAREAS, TAREAS_EDFISICA, PUNTAJES_INICIALES, getJornada, jefeDelDia, IDS_EXTRA } from '../data/mockData';
+ import {
+-  BONO_MAXIMO, PUNTOS_CHECKLIST, PUNTOS_CIERRE, PUNTOS_DESAFIO, PUNTOS_EDFISICA, TAREA_EXTRA_MAX, crearDiasEdFisica, deIso, hoyISO, lunesDe, resumenTurnos, sumarDias,
++  BONO_MAXIMO, aplicarFeriados, PUNTOS_CHECKLIST, PUNTOS_CIERRE, PUNTOS_DESAFIO, PUNTOS_EDFISICA, TAREA_EXTRA_MAX, crearDiasEdFisica, deIso, hoyISO, lunesDe, resumenTurnos, sumarDias,
+ } from '../lib/semanas';
+ import { alumnosEn, conVersion, sinVersion, validarLideres } from '../lib/lideres';
+ import { premiosTrasAprobacion } from '../lib/premios';
+@@ -95,11 +96,11 @@ export function PlantProvider({ children }) {
+   const [puntajes, setPuntajes] = useState({});
+   const [jornadasHoy, setJornadasHoy] = useState([]);
+   const [jornadasSemana, setJornadasSemana] = useState([]); // toda la semana en curso
+-  const [diasSemana, setDiasSemana] = useState([]); // sin clase / suplentes de la semana en curso
++  const [diasSemanaBruto, setDiasSemana] = useState([]); // sin clase / suplentes de la semana en curso
+   const [bonosSemana, setBonosSemana] = useState([]);
+   const [premioSemana, setPremioSemana] = useState(null); // premio que carga el docente
+   const [historial, setHistorial] = useState([]); // solo docente: todas las jornadas
+-  const [diasTodos, setDiasTodos] = useState([]); // solo docente: todos los días con novedades
++  const [diasTodosBruto, setDiasTodos] = useState([]); // solo docente: todos los días con novedades
+   const [bonosTodos, setBonosTodos] = useState([]); // solo docente: todos los bonos
+   const [premios, setPremios] = useState([]); // solo docente: todos los premios semanales
+   const [versionesLideres, setVersionesLideres] = useState([]); // cambios de líderes cargados por el docente (con fecha de vigencia)
+@@ -191,6 +192,9 @@ export function PlantProvider({ children }) {
+ 
+   const jornada = useMemo(getJornada, [fecha]);
+   const semana = lunesDe(fecha);
++  // Días con novedades + feriados nacionales (sin clase salvo que el docente diga "hay clase")
++  const diasSemana = useMemo(() => aplicarFeriados(diasSemanaBruto, { desde: semana, hasta: sumarDias(semana, 6) }), [diasSemanaBruto, semana]);
++  const diasTodos = useMemo(() => aplicarFeriados(diasTodosBruto), [diasTodosBruto]);
+   const sinClaseSemana = useMemo(() => setDeFechas(diasSemana), [diasSemana]);
+   const sinClaseTodos = useMemo(() => setDeFechas(diasTodos), [diasTodos]);
+   const edFisicaSemana = useMemo(() => crearDiasEdFisica(diasSemana), [diasSemana]);
+@@ -361,7 +365,7 @@ export function PlantProvider({ children }) {
+         const ref = doc(db, 'dias', fechaSel);
+         const previo = (await tx.get(ref)).data() ?? {};
+         const nuevo = mutar({ ...previo, suplentes: { ...(previo.suplentes ?? {}) } });
+-        if (!nuevo.sinClase && !nuevo.edFisica && !nuevo.sinEdFisica && Object.keys(nuevo.suplentes).length === 0) tx.delete(ref);
++        if (!nuevo.sinClase && !nuevo.conClase && !nuevo.edFisica && !nuevo.sinEdFisica && Object.keys(nuevo.suplentes).length === 0) tx.delete(ref);
+         else tx.set(ref, { ...nuevo, fecha: fechaSel });
+       });
+       setError('');
+@@ -383,8 +387,12 @@ export function PlantProvider({ children }) {
+ 
+   const marcarSinClase = (fechaSel, activo, motivo = '') =>
+     editarDia(fechaSel, (d) => {
+-      if (activo) { d.sinClase = true; d.motivo = String(motivo).trim().slice(0, 60); }
+-      else { delete d.sinClase; delete d.motivo; }
++      if (activo) { d.sinClase = true; d.motivo = String(motivo).trim().slice(0, 60); delete d.conClase; }
++      else {
++        delete d.sinClase; delete d.motivo;
++        // En un feriado precargado, "quitar la marca" guarda que ese día sí hay clase (si no, el feriado volvería a aplicarse)
++        if (feriadoDe(fechaSel)) d.conClase = true;
++      }
+       return d;
+     });
+ 
+diff --git a/src/data/feriados.js b/src/data/feriados.js
+new file mode 100644
+index 0000000..44bb416
+--- /dev/null
++++ b/src/data/feriados.js
+@@ -0,0 +1,33 @@
++// Feriados nacionales de Argentina que la app marca solos como "día sin clase" (no suman puntos ni cuentan como jornada).
++//
++// - Fuente: Ley 27.399 (feriados inamovibles y reglas de traslado) y el calendario oficial en argentina.gob.ar/feriados.
++// - Solo están los feriados nacionales. Los "días no laborables" (por ejemplo el lunes 7/12/2026) y los puentes turísticos
++//   no se precargan: cada escuela decide si hay clase, así que se marcan a mano desde "Días especiales".
++// - Si ese día sí hay clase (o la escuela no adhiere), el docente toca "Hay clase este día" y queda solo para esa fecha.
++// - Para 2027 faltan los días con fines turísticos (el Gobierno los fija por decreto hacia fines de 2026) y el eventual
++//   traslado del 20/11/2027, que cae sábado: agregarlos acá cuando salgan, siempre ordenados por fecha.
++//
++// Las fechas anteriores a FERIADOS_DESDE no se tocan: las jornadas ya cargadas conservan su resultado.
++export const FERIADOS_DESDE = '2026-11-02';
++
++export const FERIADOS = [
++  { fecha: '2026-11-23', motivo: 'Día de la Soberanía Nacional (trasladado del 20/11)' },
++  { fecha: '2026-12-08', motivo: 'Inmaculada Concepción de María' },
++  { fecha: '2026-12-25', motivo: 'Navidad' },
++  // 2027 (según la Ley 27.399)
++  { fecha: '2027-01-01', motivo: 'Año Nuevo' },
++  { fecha: '2027-02-08', motivo: 'Carnaval' },
++  { fecha: '2027-02-09', motivo: 'Carnaval' },
++  { fecha: '2027-03-24', motivo: 'Día Nacional de la Memoria por la Verdad y la Justicia' },
++  { fecha: '2027-03-26', motivo: 'Viernes Santo' },
++  { fecha: '2027-04-02', motivo: 'Día del Veterano y de los Caídos en la Guerra de Malvinas' },
++  { fecha: '2027-05-25', motivo: 'Día de la Revolución de Mayo' },
++  { fecha: '2027-06-21', motivo: 'Paso a la Inmortalidad del Gral. Güemes (trasladado del 17/6)' },
++  { fecha: '2027-07-09', motivo: 'Día de la Independencia' },
++  { fecha: '2027-08-16', motivo: 'Paso a la Inmortalidad del Gral. San Martín (trasladado del 17/8)' },
++  { fecha: '2027-10-11', motivo: 'Día del Respeto a la Diversidad Cultural (trasladado del 12/10)' },
++  { fecha: '2027-12-08', motivo: 'Inmaculada Concepción de María' },
++];
++
++// El feriado de esa fecha (o null). Respeta FERIADOS_DESDE.
++export const feriadoDe = (fecha) => (fecha >= FERIADOS_DESDE ? FERIADOS.find((f) => f.fecha === fecha) ?? null : null);
+diff --git a/src/lib/feriados.test.js b/src/lib/feriados.test.js
+new file mode 100644
+index 0000000..26077ec
+--- /dev/null
++++ b/src/lib/feriados.test.js
+@@ -0,0 +1,71 @@
++import { describe, expect, it } from 'vitest';
++import { FERIADOS, FERIADOS_DESDE, feriadoDe } from '../data/feriados';
++import { aplicarFeriados, crearDiasEdFisica, resumenTurnos } from './semanas';
++
++const dow = (iso) => new Date(`${iso}T12:00:00`).getDay();
++const completa = (fecha, jefeId) => ({ fecha, jefeId, premioChecklist: true, premioCierre: true, desafioAprobado: true });
++
++describe('lista de feriados', () => {
++  it('tiene fechas válidas, ordenadas, sin repetir y en día de semana', () => {
++    const fechas = FERIADOS.map((f) => f.fecha);
++    expect(fechas.every((f) => /^\d{4}-\d{2}-\d{2}$/.test(f))).toBe(true);
++    expect([...fechas].sort()).toEqual(fechas);
++    expect(new Set(fechas).size).toBe(fechas.length);
++    // un feriado en sábado o domingo no afecta a la escuela: si aparece, casi seguro es un error de carga
++    expect(fechas.filter((f) => dow(f) === 0 || dow(f) === 6)).toEqual([]);
++    expect(FERIADOS.every((f) => f.motivo.length > 0 && f.motivo.length <= 80)).toBe(true);
++  });
++
++  it('feriadoDe ignora lo anterior a FERIADOS_DESDE', () => {
++    expect(feriadoDe('2026-11-23')?.motivo).toMatch(/Soberan/);
++    expect(feriadoDe('2026-11-24')).toBeNull();
++    expect(feriadoDe('2026-10-12')).toBeNull();
++    expect(FERIADOS.every((f) => f.fecha >= FERIADOS_DESDE)).toBe(true);
++  });
++});
++
++describe('aplicarFeriados', () => {
++  it('un feriado sin documento en /dias es un día sin clase', () => {
++    const r = aplicarFeriados([]);
++    const d = r.find((x) => x.fecha === '2026-12-08');
++    expect(d).toMatchObject({ sinClase: true, virtual: true });
++    expect(d.motivo).toBeTruthy();
++  });
++
++  it('si el docente puso "hay clase", ese feriado deja de ser sin clase', () => {
++    const r = aplicarFeriados([{ id: '2026-12-08', fecha: '2026-12-08', conClase: true }]);
++    const d = r.filter((x) => x.fecha === '2026-12-08');
++    expect(d).toHaveLength(1);
++    expect(d[0].sinClase).toBe(false);
++    expect(d[0].feriado).toBeTruthy();
++  });
++
++  it('conserva el motivo y los suplentes que cargó el docente', () => {
++    const r = aplicarFeriados([{ id: '2026-12-08', fecha: '2026-12-08', sinClase: true, motivo: 'Acto escolar', suplentes: { 2: 'Pérez, J.' } }]);
++    const d = r.find((x) => x.fecha === '2026-12-08');
++    expect(d.motivo).toBe('Acto escolar');
++    expect(d.suplentes).toEqual({ 2: 'Pérez, J.' });
++    expect(d.sinClase).toBe(true);
++  });
++
++  it('los días que no son feriado quedan como estaban', () => {
++    const dia = { id: '2026-11-25', fecha: '2026-11-25', sinClase: true, motivo: 'Paro' };
++    expect(aplicarFeriados([dia]).find((x) => x.fecha === '2026-11-25')).toBe(dia);
++  });
++
++  it('desde y hasta acotan los feriados que se suman', () => {
++    const r = aplicarFeriados([], { desde: '2026-11-23', hasta: '2026-11-29' });
++    expect(r.map((d) => d.fecha)).toEqual(['2026-11-23']);
++  });
++
++  it('un feriado en lunes no tiene Ed. Física ni cuenta como jornada', () => {
++    const dias = aplicarFeriados([], { desde: '2026-11-23', hasta: '2026-11-29' });
++    const ef = crearDiasEdFisica(dias);
++    expect(ef.has('2026-11-23')).toBe(false); // lunes feriado
++    expect(ef.has('2026-11-27')).toBe(true); // el viernes sigue con Ed. Física
++    const sinClase = new Set(dias.filter((d) => d.sinClase).map((d) => d.fecha));
++    const r = resumenTurnos([completa('2026-11-23', 1), completa('2026-11-24', 2)], { diasSinClase: sinClase });
++    expect(r.lista.find((t) => t.id === 'e1').jornadas).toBe(0);
++    expect(r.lista.find((t) => t.id === 'e2').jornadas).toBe(1);
++  });
++});
+diff --git a/src/lib/semanas.js b/src/lib/semanas.js
+index 1bdaf0e..ee64bf2 100644
+--- a/src/lib/semanas.js
++++ b/src/lib/semanas.js
+@@ -1,3 +1,4 @@
++import { FERIADOS, FERIADOS_DESDE } from '../data/feriados';
+ import { ALUMNOS, TURNOS } from '../data/mockData';
+ 
+ export const PUNTOS_CHECKLIST = 10;
+@@ -126,4 +127,24 @@ export function crearDiasEdFisica(dias = []) {
+       return fecha >= EDFISICA_AUTO_DESDE && DIAS_EDFISICA_AUTO.includes(deIso(fecha).getDay());
+     },
+   };
+-}
+\ No newline at end of file
++}
++// Suma los feriados nacionales (src/data/feriados.js) a los días con novedades que cargó el docente (documentos de /dias):
++// cada feriado es "sin clase" salvo que el docente haya dejado `conClase` ("Hay clase este día"). Así todo lo demás
++// (resumen, pendientes, Ed. Física, aviso a los alumnos) sigue leyendo `sinClase` como siempre.
++// `desde` y `hasta` acotan las fechas (para la semana en curso); los días de la lista que no son feriado quedan igual.
++export function aplicarFeriados(dias, { desde = FERIADOS_DESDE, hasta = '9999-12-31', feriados = FERIADOS } = {}) {
++  const enRango = feriados.filter((f) => f.fecha >= FERIADOS_DESDE && f.fecha >= desde && f.fecha <= hasta);
++  const porFecha = new Map(enRango.map((f) => [f.fecha, f]));
++  const vistos = new Set();
++  const lista = dias.map((d) => {
++    const f = porFecha.get(d.fecha);
++    if (!f) return d;
++    vistos.add(d.fecha);
++    if (d.conClase) return { ...d, sinClase: false, feriado: f.motivo };
++    return { ...d, sinClase: true, motivo: d.motivo || f.motivo, feriado: f.motivo };
++  });
++  for (const f of enRango) {
++    if (!vistos.has(f.fecha)) lista.push({ id: f.fecha, fecha: f.fecha, sinClase: true, motivo: f.motivo, feriado: f.motivo, virtual: true });
++  }
++  return lista;
++}
+-- 
+2.43.0
+

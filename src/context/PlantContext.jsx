@@ -4,9 +4,10 @@ import {
   collection, deleteField, doc, getDoc, increment, getDocs, onSnapshot, query, runTransaction, serverTimestamp, setDoc, where, writeBatch,
 } from 'firebase/firestore';
 import { auth, db } from '../firebase';
+import { feriadoDe } from '../data/feriados';
 import { ALUMNOS, TURNOS, TAREAS, TAREAS_EDFISICA, PUNTAJES_INICIALES, getJornada, jefeDelDia, IDS_EXTRA } from '../data/mockData';
 import {
-  BONO_MAXIMO, PUNTOS_CHECKLIST, PUNTOS_CIERRE, PUNTOS_DESAFIO, PUNTOS_EDFISICA, TAREA_EXTRA_MAX, crearDiasEdFisica, deIso, hoyISO, lunesDe, resumenTurnos, sumarDias,
+  BONO_MAXIMO, aplicarFeriados, PUNTOS_CHECKLIST, PUNTOS_CIERRE, PUNTOS_DESAFIO, PUNTOS_EDFISICA, TAREA_EXTRA_MAX, crearDiasEdFisica, deIso, hoyISO, lunesDe, resumenTurnos, sumarDias,
 } from '../lib/semanas';
 import { alumnosEn, conVersion, sinVersion, validarLideres } from '../lib/lideres';
 import { premiosTrasAprobacion } from '../lib/premios';
@@ -95,11 +96,11 @@ export function PlantProvider({ children }) {
   const [puntajes, setPuntajes] = useState({});
   const [jornadasHoy, setJornadasHoy] = useState([]);
   const [jornadasSemana, setJornadasSemana] = useState([]); // toda la semana en curso
-  const [diasSemana, setDiasSemana] = useState([]); // sin clase / suplentes de la semana en curso
+  const [diasSemanaBruto, setDiasSemana] = useState([]); // sin clase / suplentes de la semana en curso
   const [bonosSemana, setBonosSemana] = useState([]);
   const [premioSemana, setPremioSemana] = useState(null); // premio que carga el docente
   const [historial, setHistorial] = useState([]); // solo docente: todas las jornadas
-  const [diasTodos, setDiasTodos] = useState([]); // solo docente: todos los días con novedades
+  const [diasTodosBruto, setDiasTodos] = useState([]); // solo docente: todos los días con novedades
   const [bonosTodos, setBonosTodos] = useState([]); // solo docente: todos los bonos
   const [premios, setPremios] = useState([]); // solo docente: todos los premios semanales
   const [versionesLideres, setVersionesLideres] = useState([]); // cambios de líderes cargados por el docente (con fecha de vigencia)
@@ -191,6 +192,9 @@ export function PlantProvider({ children }) {
 
   const jornada = useMemo(getJornada, [fecha]);
   const semana = lunesDe(fecha);
+  // Días con novedades + feriados nacionales (sin clase salvo que el docente diga "hay clase")
+  const diasSemana = useMemo(() => aplicarFeriados(diasSemanaBruto, { desde: semana, hasta: sumarDias(semana, 6) }), [diasSemanaBruto, semana]);
+  const diasTodos = useMemo(() => aplicarFeriados(diasTodosBruto), [diasTodosBruto]);
   const sinClaseSemana = useMemo(() => setDeFechas(diasSemana), [diasSemana]);
   const sinClaseTodos = useMemo(() => setDeFechas(diasTodos), [diasTodos]);
   const edFisicaSemana = useMemo(() => crearDiasEdFisica(diasSemana), [diasSemana]);
@@ -361,7 +365,7 @@ export function PlantProvider({ children }) {
         const ref = doc(db, 'dias', fechaSel);
         const previo = (await tx.get(ref)).data() ?? {};
         const nuevo = mutar({ ...previo, suplentes: { ...(previo.suplentes ?? {}) } });
-        if (!nuevo.sinClase && !nuevo.edFisica && !nuevo.sinEdFisica && Object.keys(nuevo.suplentes).length === 0) tx.delete(ref);
+        if (!nuevo.sinClase && !nuevo.conClase && !nuevo.edFisica && !nuevo.sinEdFisica && Object.keys(nuevo.suplentes).length === 0) tx.delete(ref);
         else tx.set(ref, { ...nuevo, fecha: fechaSel });
       });
       setError('');
@@ -383,8 +387,12 @@ export function PlantProvider({ children }) {
 
   const marcarSinClase = (fechaSel, activo, motivo = '') =>
     editarDia(fechaSel, (d) => {
-      if (activo) { d.sinClase = true; d.motivo = String(motivo).trim().slice(0, 60); }
-      else { delete d.sinClase; delete d.motivo; }
+      if (activo) { d.sinClase = true; d.motivo = String(motivo).trim().slice(0, 60); delete d.conClase; }
+      else {
+        delete d.sinClase; delete d.motivo;
+        // En un feriado precargado, "quitar la marca" guarda que ese día sí hay clase (si no, el feriado volvería a aplicarse)
+        if (feriadoDe(fechaSel)) d.conClase = true;
+      }
       return d;
     });
 
