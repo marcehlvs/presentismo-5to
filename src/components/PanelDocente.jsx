@@ -17,6 +17,8 @@ import PinesEditor from './PinesEditor';
 import VerificarPuntos from './VerificarPuntos';
 import ResumenSemanal from './ResumenSemanal';
 import Pendientes from './Pendientes';
+import Solapas from './Solapas';
+import { solapaValida } from '../lib/solapas';
 import { btn, campo } from './estilos';
 
 function FormularioDesafio() {
@@ -332,8 +334,69 @@ function ReiniciarPuntos() {
   );
 }
 
+const SOLAPA_KEY = 'panel-docente-solapa';
+const IDS_SOLAPAS = ['hoy', 'semana', 'calendario', 'lideres', 'puntos'];
+
 export default function PanelDocente() {
   const { jornadasHoy, alumnos, tareas, logoutDocente, jornada, error, suplentesHoy, hoyEdFisica } = usePlant();
+  const [activa, setActiva] = useState(() => {
+    try { return solapaValida(IDS_SOLAPAS, sessionStorage.getItem(SOLAPA_KEY)); } catch { return IDS_SOLAPAS[0]; }
+  });
+  const cambiar = (id) => {
+    setActiva(id);
+    try { sessionStorage.setItem(SOLAPA_KEY, id); } catch { /* sin almacenamiento */ }
+    window.scrollTo?.({ top: 0 });
+  };
+
+  const hoy = (
+    <>
+      <AvisoSinClase />
+      <Pendientes />
+      {hoyEdFisica && (
+        <p role="status" className="rounded-lg border-2 border-operativa bg-operativa/10 p-4 font-semibold">
+          Hoy hay Educación Física: los alumnos ven su checklist y lo aprobás acá, en el bloque “Educación Física” de cada líder.
+        </p>
+      )}
+      <FormularioDesafio />
+      <FormularioTareasExtra />
+      {jornadasHoy.length === 0 && (
+        <p className="bg-white border-2 border-acero rounded-lg p-5">Todavía no hay actividad de Jefes de Planta hoy.</p>
+      )}
+      {jornadasHoy.map((j) => {
+        const alumno = alumnos.find((a) => a.id === j.jefeId);
+        const suplente = suplentesHoy[String(j.jefeId)];
+        return (
+          <section key={j.id} className="bg-white border-2 border-acero rounded-lg p-5">
+            <h2 className="font-display text-3xl font-bold mb-3">
+              {alumno?.nombre ?? `Jefe ${j.jefeId}`}
+              {suplente && <span className="block font-sans text-base font-medium text-acero/70">Hoy lo reemplaza {suplente}. Los puntos van al equipo del líder.</span>}
+            </h2>
+            {['apertura', ...(hoyEdFisica ? ['edfisica'] : []), 'cierre'].map((m) => (
+              <div key={m} className="mt-4 first:mt-0">
+                <h3 className="font-display text-xl font-bold mb-2">{MOMENTOS[m]}</h3>
+                <ul className="space-y-2">
+                  {tareas.filter((t) => t.momento === m).map((t) => <FilaTareaDocente key={t.id} j={j} t={t} />)}
+                </ul>
+              </div>
+            ))}
+            {j.premioChecklist && <p className="mt-2 text-sm text-operativa font-semibold">Checklist matutino completo: puntos ya sumados al equipo.</p>}
+            {j.premioCierre && <p className="mt-1 text-sm text-operativa font-semibold">Cierre de planta completo: puntos ya sumados al equipo.</p>}
+            {j.premioEdFisica && <p className="mt-1 text-sm text-operativa font-semibold">Educación Física completa: puntos ya sumados al equipo.</p>}
+
+            <RevisionDesafio j={j} />
+          </section>
+        );
+      })}
+    </>
+  );
+
+  const solapas = [
+    { id: 'hoy', titulo: 'Hoy', contenido: hoy },
+    { id: 'semana', titulo: 'Semana', contenido: <><FormularioPremio /><ResumenSemanal /><EvolucionSemanal /></> },
+    { id: 'calendario', titulo: 'Calendario', contenido: <><DiasEspeciales /><DiasEdFisicaEditor /></> },
+    { id: 'lideres', titulo: 'Líderes', contenido: <><LideresEditor /><PinesEditor /></> },
+    { id: 'puntos', titulo: 'Puntos', contenido: <><Bonos /><VerificarPuntos /><Historial /><ReiniciarPuntos /></> },
+  ];
 
   return (
     <div className="min-h-screen">
@@ -351,59 +414,15 @@ export default function PanelDocente() {
         </div>
       </header>
 
-      <main className="max-w-6xl mx-auto px-4 py-6 grid gap-6 grid-cols-[minmax(0,1fr)] lg:grid-cols-[minmax(0,1fr)_360px] items-start">
-        <div className="space-y-6 min-w-0">
-          {error && <p role="alert" className="text-alarma font-semibold">{error}</p>}
-          <AvisoSinClase />
-          <Pendientes />
-          {hoyEdFisica && (
-            <p role="status" className="rounded-lg border-2 border-operativa bg-operativa/10 p-4 font-semibold">
-              Hoy hay Educación Física: los alumnos ven su checklist y lo aprobás acá, en el bloque “Educación Física” de cada líder.
-            </p>
-          )}
-          <FormularioDesafio />
-          <FormularioTareasExtra />
-          <FormularioPremio />
-          <DiasEspeciales />
-          <DiasEdFisicaEditor />
-          <LideresEditor />
-          <PinesEditor />
-          <Bonos />
-          <VerificarPuntos />
-          {jornadasHoy.length === 0 && (
-            <p className="bg-white border-2 border-acero rounded-lg p-5">Todavía no hay actividad de Jefes de Planta hoy.</p>
-          )}
-          {jornadasHoy.map((j) => {
-            const alumno = alumnos.find((a) => a.id === j.jefeId);
-            const suplente = suplentesHoy[String(j.jefeId)];
-            return (
-              <section key={j.id} className="bg-white border-2 border-acero rounded-lg p-5">
-                <h2 className="font-display text-3xl font-bold mb-3">
-                  {alumno?.nombre ?? `Jefe ${j.jefeId}`}
-                  {suplente && <span className="block font-sans text-base font-medium text-acero/70">Hoy lo reemplaza {suplente}. Los puntos van al equipo del líder.</span>}
-                </h2>
-                {['apertura', ...(hoyEdFisica ? ['edfisica'] : []), 'cierre'].map((m) => (
-                  <div key={m} className="mt-4 first:mt-0">
-                    <h3 className="font-display text-xl font-bold mb-2">{MOMENTOS[m]}</h3>
-                    <ul className="space-y-2">
-                      {tareas.filter((t) => t.momento === m).map((t) => <FilaTareaDocente key={t.id} j={j} t={t} />)}
-                    </ul>
-                  </div>
-                ))}
-                {j.premioChecklist && <p className="mt-2 text-sm text-operativa font-semibold">Checklist matutino completo: puntos ya sumados al equipo.</p>}
-                {j.premioCierre && <p className="mt-1 text-sm text-operativa font-semibold">Cierre de planta completo: puntos ya sumados al equipo.</p>}
-                {j.premioEdFisica && <p className="mt-1 text-sm text-operativa font-semibold">Educación Física completa: puntos ya sumados al equipo.</p>}
-
-                <RevisionDesafio j={j} />
-              </section>
-            );
-          })}
-          <EvolucionSemanal />
-          <ResumenSemanal />
-          <Historial />
-          <ReiniciarPuntos />
+      <main className="max-w-6xl mx-auto px-4 pb-6 grid gap-6 grid-cols-[minmax(0,1fr)] lg:grid-cols-[minmax(0,1fr)_360px] items-start">
+        <div className="space-y-4 min-w-0">
+          {error && <p role="alert" className="text-alarma font-semibold pt-4">{error}</p>}
+          <Solapas solapas={solapas} activa={activa} onCambiar={cambiar} />
         </div>
-        <Leaderboard />
+        {/* La tabla de posiciones acompaña a "Hoy" y "Semana"; en el celular no se repite al pie de las demás solapas */}
+        <div className={`min-w-0 lg:pt-2 ${activa === 'hoy' || activa === 'semana' ? '' : 'hidden lg:block'}`}>
+          <Leaderboard />
+        </div>
       </main>
       <Creditos className="pb-6" />
     </div>

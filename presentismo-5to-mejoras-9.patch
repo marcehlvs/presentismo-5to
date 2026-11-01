@@ -1,0 +1,389 @@
+From fd60bba8dd4f21db387d641ffc860810f79f2093 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 1 Nov 2026 22:46:53 +0000
+Subject: [PATCH] =?UTF-8?q?Panel=20docente=20en=20solapas:=20Hoy,=20Semana?=
+ =?UTF-8?q?,=20Calendario,=20L=C3=ADderes=20y=20Puntos=20(versi=C3=B3n=201?=
+ =?UTF-8?q?.5.0)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+---
+ CHANGELOG.md                    |  15 +++-
+ README-DOCENTES.md              |  16 ++++-
+ README-MEJORAS.md               |   6 +-
+ README.md                       |   2 +-
+ package.json                    |   2 +-
+ src/components/PanelDocente.jsx | 123 ++++++++++++++++++--------------
+ src/components/Solapas.jsx      |  44 ++++++++++++
+ src/lib/solapas.js              |  14 ++++
+ src/lib/solapas.test.js         |  27 +++++++
+ 9 files changed, 189 insertions(+), 60 deletions(-)
+ create mode 100644 src/components/Solapas.jsx
+ create mode 100644 src/lib/solapas.js
+ create mode 100644 src/lib/solapas.test.js
+
+diff --git a/CHANGELOG.md b/CHANGELOG.md
+index eb5328b..797370d 100644
+--- a/CHANGELOG.md
++++ b/CHANGELOG.md
+@@ -1,9 +1,22 @@
+ # Historial de versiones — Operación: Jefe de Planta
+ 
+-Aplicación desarrollada por **Juan Marcelo Bejarano**. La versión actual es la **1.4.2** (1 de noviembre de 2026).
++Aplicación desarrollada por **Juan Marcelo Bejarano**. La versión actual es la **1.5.0** (1 de noviembre de 2026).
+ 
+ Cada versión indica qué cambió para los docentes y si hubo que publicar las reglas de Firestore (`firebase deploy --only firestore:rules`; siempre antes que la app).
+ 
++## [1.5.0] — 1/11/2026
++**Para los docentes**
++- **El panel docente ahora está organizado en cinco solapas**, en lugar de una sola pantalla larga:
++  - **Hoy:** avisos, pendientes de días anteriores, desafío de hoy, tareas extra y la aprobación de las jornadas de los líderes.
++  - **Semana:** premio de la semana, resumen semanal e historial de la evolución por equipo.
++  - **Calendario:** suplentes, días sin clase y Ed. Física puntual, y los días de Educación Física de la semana.
++  - **Líderes:** líderes de la semana con su avatar, y los PIN.
++  - **Puntos:** bonos, verificar puntos, historial y exportación a Excel, y "Volver a cero".
++- Se recuerda la última solapa abierta mientras la pestaña siga abierta, y lo que estés escribiendo en un formulario no se pierde al cambiar de solapa. Se puede navegar con las flechas del teclado.
++- La tabla de posiciones acompaña a *Hoy* y *Semana*; en el celular no se repite al pie de las otras solapas.
++
++**Técnico:** componente `Solapas.jsx` (accesible: roles `tablist`/`tab`/`tabpanel`) y `src/lib/solapas.js` con su prueba. Sin cambios en las reglas.
++
+ ## [1.4.2] — 1/11/2026
+ **Para los docentes**
+ - **Arreglo del panel docente y de la pantalla del jefe en el celular:** la página se desbordaba hacia la derecha (tarjetas cortadas, encabezado que no cubría todo el ancho). Ahora todo se ajusta al ancho de la pantalla y las tablas se desplazan dentro de su propia tarjeta.
+diff --git a/README-DOCENTES.md b/README-DOCENTES.md
+index d57c51b..828dc8b 100644
+--- a/README-DOCENTES.md
++++ b/README-DOCENTES.md
+@@ -6,14 +6,26 @@ Cada día un alumno es el **Jefe de Planta**. Marca lo que hizo, **el docente lo
+ 
+ > La guía técnica para instalar y publicar la app está en [`README.md`](README.md). Este documento explica qué hace la app y cómo se usa en el día a día.
+ 
+-**Versión 1.4.2** · Desarrollada por **Juan Marcelo Bejarano** · Historial completo de cambios en [`CHANGELOG.md`](CHANGELOG.md).
++**Versión 1.5.0** · Desarrollada por **Juan Marcelo Bejarano** · Historial completo de cambios en [`CHANGELOG.md`](CHANGELOG.md).
+ 
+-## Novedades de esta versión (1.1.0 a 1.4.2)
++## Cómo está organizado el panel docente
++Arriba hay cinco solapas; siempre se abre la última que usaste.
++
++| Solapa | Qué hay |
++| --- | --- |
++| **Hoy** | Avisos del día, *Pendientes de días anteriores*, desafío de hoy, tareas extra y la aprobación de las jornadas de cada líder. |
++| **Semana** | Premio de la semana, resumen semanal (se puede imprimir) y evolución por equipo. |
++| **Calendario** | Suplentes, días sin clase y Ed. Física de un día puntual; días de la semana con Ed. Física. |
++| **Líderes** | Líderes de la semana con su avatar, y los PIN de cada líder. |
++| **Puntos** | Bonos, *Verificar puntos*, historial y exportación a Excel, y *Volver a cero*. |
++
++## Novedades de esta versión (1.1.0 a 1.5.0)
+ - **Puntos:** quitar una aprobación resta los puntos; la bandeja *Pendientes de días anteriores* permite aprobar hasta 21 días atrás; *Verificar puntos* compara la tabla con las jornadas y los bonos y corrige diferencias.
+ - **Calendario:** los feriados nacionales ya vienen marcados como días sin clase (se puede habilitar clase en uno puntual); los días de Educación Física se cambian desde el panel con fecha de vigencia.
+ - **Premio semanal:** un equipo sin ninguna jornada en la semana no compite.
+ - **Líderes:** cada Jefe de Planta tiene un **avatar** y, si querés, un **PIN de 4 números** para que nadie tome el turno de otro.
+ - **Seguridad:** los alumnos solo pueden escribir jornadas de ayer, hoy o mañana.
++- **Panel en solapas:** Hoy, Semana, Calendario, Líderes y Puntos, para ver menos información a la vez.
+ - **Celular:** el panel docente y la pantalla del jefe se ajustan al ancho del teléfono (antes se cortaban a la derecha).
+ - **Contraseña visible a pedido:** en el acceso docente y en el PIN hay un botón (ojito) para mostrar u ocultar lo que escribís.
+ 
+diff --git a/README-MEJORAS.md b/README-MEJORAS.md
+index 4d2859b..60307bd 100644
+--- a/README-MEJORAS.md
++++ b/README-MEJORAS.md
+@@ -1,4 +1,4 @@
+-# Revisión y mejoras (31/10/2026 — actualizado el 1/11/2026, versión 1.4.2)
++# Revisión y mejoras (31/10/2026 — actualizado el 1/11/2026, versión 1.5.0)
+ 
+ > El detalle de cada versión está en [`CHANGELOG.md`](CHANGELOG.md). Lo que sigue es el registro de la revisión y lo que queda pendiente.
+ 
+@@ -90,8 +90,8 @@ Orden recomendado para publicar: primero las reglas (`firebase deploy --only fir
+ - [ ] Código sin uso por `RECORDAR_SESION = false` en `PlantContext.jsx`, y el líder elegido no se reinicia al pasar la medianoche.
+ - [ ] El caché del service worker acumula archivos viejos de versiones anteriores (poco volumen).
+ 
+-## Ronda del 1/11/2026 (versiones 1.2.0 a 1.4.2)
+-Hecho: ajuste del ancho en el celular, contraseña y PIN con botón para mostrar u ocultar, pruebas de ids contra reglas, error de red distinto de sin permisos, equipo sin jornada no gana, feriados precargados, días de Ed. Física en Firestore, Verificar puntos, avatares, PIN por líder, versión y créditos.
++## Ronda del 1/11/2026 (versiones 1.2.0 a 1.5.0)
++Hecho: panel docente en solapas, ajuste del ancho en el celular, contraseña y PIN con botón para mostrar u ocultar, pruebas de ids contra reglas, error de red distinto de sin permisos, equipo sin jornada no gana, feriados precargados, días de Ed. Física en Firestore, Verificar puntos, avatares, PIN por líder, versión y créditos.
+ 
+ Queda pendiente:
+ - [ ] **Puntos como fuente única de verdad** (y con eso un solo criterio de ranking). *Verificar puntos* detecta y corrige descuadres, pero el contador sigue existiendo.
+diff --git a/README.md b/README.md
+index d66d896..11161b0 100644
+--- a/README.md
++++ b/README.md
+@@ -1,6 +1,6 @@
+ # Operación: Jefe de Planta
+ 
+-**Versión 1.4.2** · Desarrollada por **Juan Marcelo Bejarano** · [Historial de cambios](CHANGELOG.md)
++**Versión 1.5.0** · Desarrollada por **Juan Marcelo Bejarano** · [Historial de cambios](CHANGELOG.md)
+ 
+ > 📋 ¿Sos docente? Mirá la [guía de funcionalidades para docentes](README-DOCENTES.md).
+ 
+diff --git a/package.json b/package.json
+index 86e2c1c..c5378ca 100644
+--- a/package.json
++++ b/package.json
+@@ -1,7 +1,7 @@
+ {
+   "name": "jefe-de-planta",
+   "private": true,
+-  "version": "1.4.2",
++  "version": "1.5.0",
+   "type": "module",
+   "scripts": {
+     "dev": "vite",
+diff --git a/src/components/PanelDocente.jsx b/src/components/PanelDocente.jsx
+index 09f1b59..b2cf49f 100644
+--- a/src/components/PanelDocente.jsx
++++ b/src/components/PanelDocente.jsx
+@@ -17,6 +17,8 @@ import PinesEditor from './PinesEditor';
+ import VerificarPuntos from './VerificarPuntos';
+ import ResumenSemanal from './ResumenSemanal';
+ import Pendientes from './Pendientes';
++import Solapas from './Solapas';
++import { solapaValida } from '../lib/solapas';
+ import { btn, campo } from './estilos';
+ 
+ function FormularioDesafio() {
+@@ -332,8 +334,69 @@ function ReiniciarPuntos() {
+   );
+ }
+ 
++const SOLAPA_KEY = 'panel-docente-solapa';
++const IDS_SOLAPAS = ['hoy', 'semana', 'calendario', 'lideres', 'puntos'];
++
+ export default function PanelDocente() {
+   const { jornadasHoy, alumnos, tareas, logoutDocente, jornada, error, suplentesHoy, hoyEdFisica } = usePlant();
++  const [activa, setActiva] = useState(() => {
++    try { return solapaValida(IDS_SOLAPAS, sessionStorage.getItem(SOLAPA_KEY)); } catch { return IDS_SOLAPAS[0]; }
++  });
++  const cambiar = (id) => {
++    setActiva(id);
++    try { sessionStorage.setItem(SOLAPA_KEY, id); } catch { /* sin almacenamiento */ }
++    window.scrollTo?.({ top: 0 });
++  };
++
++  const hoy = (
++    <>
++      <AvisoSinClase />
++      <Pendientes />
++      {hoyEdFisica && (
++        <p role="status" className="rounded-lg border-2 border-operativa bg-operativa/10 p-4 font-semibold">
++          Hoy hay Educación Física: los alumnos ven su checklist y lo aprobás acá, en el bloque “Educación Física” de cada líder.
++        </p>
++      )}
++      <FormularioDesafio />
++      <FormularioTareasExtra />
++      {jornadasHoy.length === 0 && (
++        <p className="bg-white border-2 border-acero rounded-lg p-5">Todavía no hay actividad de Jefes de Planta hoy.</p>
++      )}
++      {jornadasHoy.map((j) => {
++        const alumno = alumnos.find((a) => a.id === j.jefeId);
++        const suplente = suplentesHoy[String(j.jefeId)];
++        return (
++          <section key={j.id} className="bg-white border-2 border-acero rounded-lg p-5">
++            <h2 className="font-display text-3xl font-bold mb-3">
++              {alumno?.nombre ?? `Jefe ${j.jefeId}`}
++              {suplente && <span className="block font-sans text-base font-medium text-acero/70">Hoy lo reemplaza {suplente}. Los puntos van al equipo del líder.</span>}
++            </h2>
++            {['apertura', ...(hoyEdFisica ? ['edfisica'] : []), 'cierre'].map((m) => (
++              <div key={m} className="mt-4 first:mt-0">
++                <h3 className="font-display text-xl font-bold mb-2">{MOMENTOS[m]}</h3>
++                <ul className="space-y-2">
++                  {tareas.filter((t) => t.momento === m).map((t) => <FilaTareaDocente key={t.id} j={j} t={t} />)}
++                </ul>
++              </div>
++            ))}
++            {j.premioChecklist && <p className="mt-2 text-sm text-operativa font-semibold">Checklist matutino completo: puntos ya sumados al equipo.</p>}
++            {j.premioCierre && <p className="mt-1 text-sm text-operativa font-semibold">Cierre de planta completo: puntos ya sumados al equipo.</p>}
++            {j.premioEdFisica && <p className="mt-1 text-sm text-operativa font-semibold">Educación Física completa: puntos ya sumados al equipo.</p>}
++
++            <RevisionDesafio j={j} />
++          </section>
++        );
++      })}
++    </>
++  );
++
++  const solapas = [
++    { id: 'hoy', titulo: 'Hoy', contenido: hoy },
++    { id: 'semana', titulo: 'Semana', contenido: <><FormularioPremio /><ResumenSemanal /><EvolucionSemanal /></> },
++    { id: 'calendario', titulo: 'Calendario', contenido: <><DiasEspeciales /><DiasEdFisicaEditor /></> },
++    { id: 'lideres', titulo: 'Líderes', contenido: <><LideresEditor /><PinesEditor /></> },
++    { id: 'puntos', titulo: 'Puntos', contenido: <><Bonos /><VerificarPuntos /><Historial /><ReiniciarPuntos /></> },
++  ];
+ 
+   return (
+     <div className="min-h-screen">
+@@ -351,59 +414,15 @@ export default function PanelDocente() {
+         </div>
+       </header>
+ 
+-      <main className="max-w-6xl mx-auto px-4 py-6 grid gap-6 grid-cols-[minmax(0,1fr)] lg:grid-cols-[minmax(0,1fr)_360px] items-start">
+-        <div className="space-y-6 min-w-0">
+-          {error && <p role="alert" className="text-alarma font-semibold">{error}</p>}
+-          <AvisoSinClase />
+-          <Pendientes />
+-          {hoyEdFisica && (
+-            <p role="status" className="rounded-lg border-2 border-operativa bg-operativa/10 p-4 font-semibold">
+-              Hoy hay Educación Física: los alumnos ven su checklist y lo aprobás acá, en el bloque “Educación Física” de cada líder.
+-            </p>
+-          )}
+-          <FormularioDesafio />
+-          <FormularioTareasExtra />
+-          <FormularioPremio />
+-          <DiasEspeciales />
+-          <DiasEdFisicaEditor />
+-          <LideresEditor />
+-          <PinesEditor />
+-          <Bonos />
+-          <VerificarPuntos />
+-          {jornadasHoy.length === 0 && (
+-            <p className="bg-white border-2 border-acero rounded-lg p-5">Todavía no hay actividad de Jefes de Planta hoy.</p>
+-          )}
+-          {jornadasHoy.map((j) => {
+-            const alumno = alumnos.find((a) => a.id === j.jefeId);
+-            const suplente = suplentesHoy[String(j.jefeId)];
+-            return (
+-              <section key={j.id} className="bg-white border-2 border-acero rounded-lg p-5">
+-                <h2 className="font-display text-3xl font-bold mb-3">
+-                  {alumno?.nombre ?? `Jefe ${j.jefeId}`}
+-                  {suplente && <span className="block font-sans text-base font-medium text-acero/70">Hoy lo reemplaza {suplente}. Los puntos van al equipo del líder.</span>}
+-                </h2>
+-                {['apertura', ...(hoyEdFisica ? ['edfisica'] : []), 'cierre'].map((m) => (
+-                  <div key={m} className="mt-4 first:mt-0">
+-                    <h3 className="font-display text-xl font-bold mb-2">{MOMENTOS[m]}</h3>
+-                    <ul className="space-y-2">
+-                      {tareas.filter((t) => t.momento === m).map((t) => <FilaTareaDocente key={t.id} j={j} t={t} />)}
+-                    </ul>
+-                  </div>
+-                ))}
+-                {j.premioChecklist && <p className="mt-2 text-sm text-operativa font-semibold">Checklist matutino completo: puntos ya sumados al equipo.</p>}
+-                {j.premioCierre && <p className="mt-1 text-sm text-operativa font-semibold">Cierre de planta completo: puntos ya sumados al equipo.</p>}
+-                {j.premioEdFisica && <p className="mt-1 text-sm text-operativa font-semibold">Educación Física completa: puntos ya sumados al equipo.</p>}
+-
+-                <RevisionDesafio j={j} />
+-              </section>
+-            );
+-          })}
+-          <EvolucionSemanal />
+-          <ResumenSemanal />
+-          <Historial />
+-          <ReiniciarPuntos />
++      <main className="max-w-6xl mx-auto px-4 pb-6 grid gap-6 grid-cols-[minmax(0,1fr)] lg:grid-cols-[minmax(0,1fr)_360px] items-start">
++        <div className="space-y-4 min-w-0">
++          {error && <p role="alert" className="text-alarma font-semibold pt-4">{error}</p>}
++          <Solapas solapas={solapas} activa={activa} onCambiar={cambiar} />
++        </div>
++        {/* La tabla de posiciones acompaña a "Hoy" y "Semana"; en el celular no se repite al pie de las demás solapas */}
++        <div className={`min-w-0 lg:pt-2 ${activa === 'hoy' || activa === 'semana' ? '' : 'hidden lg:block'}`}>
++          <Leaderboard />
+         </div>
+-        <Leaderboard />
+       </main>
+       <Creditos className="pb-6" />
+     </div>
+diff --git a/src/components/Solapas.jsx b/src/components/Solapas.jsx
+new file mode 100644
+index 0000000..05706e7
+--- /dev/null
++++ b/src/components/Solapas.jsx
+@@ -0,0 +1,44 @@
++import { useRef } from 'react';
++import { siguienteSolapa } from '../lib/solapas';
++
++// Solapas accesibles (rol tablist, flechas del teclado). Todos los paneles quedan montados y los inactivos solo se ocultan:
++// así no se pierde lo que se estaba escribiendo en un formulario al cambiar de solapa.
++export default function Solapas({ solapas, activa, onCambiar }) {
++  const botones = useRef({});
++  const ids = solapas.map((s) => s.id);
++
++  const alTeclear = (e) => {
++    const destino = siguienteSolapa(ids, activa, e.key);
++    if (!destino) return;
++    e.preventDefault();
++    onCambiar(destino);
++    botones.current[destino]?.focus();
++  };
++
++  return (
++    <>
++      <div className="sticky top-0 z-20 py-2 bg-hormigon">
++        <div role="tablist" aria-label="Secciones del panel docente" onKeyDown={alTeclear} className="flex gap-2 overflow-x-auto pb-1">
++          {solapas.map((s) => {
++            const esta = s.id === activa;
++            return (
++              <button
++                key={s.id} ref={(el) => { botones.current[s.id] = el; }}
++                role="tab" id={`solapa-${s.id}`} aria-selected={esta} aria-controls={`panel-${s.id}`} tabIndex={esta ? 0 : -1}
++                onClick={() => onCambiar(s.id)}
++                className={`shrink-0 whitespace-nowrap rounded-md border-2 border-acero px-4 py-2.5 font-display text-lg font-bold focus:outline-none focus-visible:ring-4 focus-visible:ring-seguridad/60 ${esta ? 'bg-acero text-seguridad' : 'bg-white text-acero hover:bg-seguridad/30'}`}
++              >
++                {s.titulo}
++              </button>
++            );
++          })}
++        </div>
++      </div>
++      {solapas.map((s) => (
++        <div key={s.id} role="tabpanel" id={`panel-${s.id}`} aria-labelledby={`solapa-${s.id}`} hidden={s.id !== activa} className="space-y-6 min-w-0">
++          {s.contenido}
++        </div>
++      ))}
++    </>
++  );
++}
+diff --git a/src/lib/solapas.js b/src/lib/solapas.js
+new file mode 100644
+index 0000000..2842a9d
+--- /dev/null
++++ b/src/lib/solapas.js
+@@ -0,0 +1,14 @@
++// Navegación por teclado de las solapas (flechas, Inicio y Fin; da la vuelta al llegar al extremo).
++// Devuelve el id de la solapa a la que hay que pasar, o null si la tecla no mueve nada.
++export function siguienteSolapa(ids, actual, tecla) {
++  const i = ids.indexOf(actual);
++  if (i === -1 || ids.length === 0) return null;
++  if (tecla === 'ArrowRight') return ids[(i + 1) % ids.length];
++  if (tecla === 'ArrowLeft') return ids[(i - 1 + ids.length) % ids.length];
++  if (tecla === 'Home') return ids[0];
++  if (tecla === 'End') return ids[ids.length - 1];
++  return null;
++}
++
++// Solapa guardada, si todavía existe; si no, la primera
++export const solapaValida = (ids, guardada) => (ids.includes(guardada) ? guardada : ids[0]);
+diff --git a/src/lib/solapas.test.js b/src/lib/solapas.test.js
+new file mode 100644
+index 0000000..5a2b785
+--- /dev/null
++++ b/src/lib/solapas.test.js
+@@ -0,0 +1,27 @@
++import { describe, expect, it } from 'vitest';
++import { siguienteSolapa, solapaValida } from './solapas';
++
++const ids = ['hoy', 'semana', 'calendario'];
++
++describe('solapas', () => {
++  it('las flechas avanzan y retroceden dando la vuelta', () => {
++    expect(siguienteSolapa(ids, 'hoy', 'ArrowRight')).toBe('semana');
++    expect(siguienteSolapa(ids, 'calendario', 'ArrowRight')).toBe('hoy');
++    expect(siguienteSolapa(ids, 'semana', 'ArrowLeft')).toBe('hoy');
++    expect(siguienteSolapa(ids, 'hoy', 'ArrowLeft')).toBe('calendario');
++  });
++
++  it('Inicio y Fin van a los extremos; otras teclas no hacen nada', () => {
++    expect(siguienteSolapa(ids, 'semana', 'Home')).toBe('hoy');
++    expect(siguienteSolapa(ids, 'semana', 'End')).toBe('calendario');
++    expect(siguienteSolapa(ids, 'semana', 'Enter')).toBeNull();
++    expect(siguienteSolapa(ids, 'otra', 'ArrowRight')).toBeNull();
++    expect(siguienteSolapa([], 'hoy', 'ArrowRight')).toBeNull();
++  });
++
++  it('una solapa guardada que ya no existe vuelve a la primera', () => {
++    expect(solapaValida(ids, 'semana')).toBe('semana');
++    expect(solapaValida(ids, 'borrada')).toBe('hoy');
++    expect(solapaValida(ids, null)).toBe('hoy');
++  });
++});
+-- 
+2.43.0
+

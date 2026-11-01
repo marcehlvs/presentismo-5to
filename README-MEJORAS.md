@@ -1,4 +1,4 @@
-# Revisión y mejoras (31/10/2026 — actualizado el 1/11/2026, versión 1.4.2)
+# Revisión y mejoras (31/10/2026 — actualizado el 1/11/2026, versión 1.5.0)
 
 > El detalle de cada versión está en [`CHANGELOG.md`](CHANGELOG.md). Lo que sigue es el registro de la revisión y lo que queda pendiente.
 
@@ -90,8 +90,8 @@ Orden recomendado para publicar: primero las reglas (`firebase deploy --only fir
 - [ ] Código sin uso por `RECORDAR_SESION = false` en `PlantContext.jsx`, y el líder elegido no se reinicia al pasar la medianoche.
 - [ ] El caché del service worker acumula archivos viejos de versiones anteriores (poco volumen).
 
-## Ronda del 1/11/2026 (versiones 1.2.0 a 1.4.2)
-Hecho: ajuste del ancho en el celular, contraseña y PIN con botón para mostrar u ocultar, pruebas de ids contra reglas, error de red distinto de sin permisos, equipo sin jornada no gana, feriados precargados, días de Ed. Física en Firestore, Verificar puntos, avatares, PIN por líder, versión y créditos.
+## Ronda del 1/11/2026 (versiones 1.2.0 a 1.5.0)
+Hecho: panel docente en solapas, ajuste del ancho en el celular, contraseña y PIN con botón para mostrar u ocultar, pruebas de ids contra reglas, error de red distinto de sin permisos, equipo sin jornada no gana, feriados precargados, días de Ed. Física en Firestore, Verificar puntos, avatares, PIN por líder, versión y créditos.
 
 Queda pendiente:
 - [ ] **Puntos como fuente única de verdad** (y con eso un solo criterio de ranking). *Verificar puntos* detecta y corrige descuadres, pero el contador sigue existiendo.

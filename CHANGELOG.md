@@ -1,8 +1,21 @@
 # Historial de versiones — Operación: Jefe de Planta
 
-Aplicación desarrollada por **Juan Marcelo Bejarano**. La versión actual es la **1.4.2** (1 de noviembre de 2026).
+Aplicación desarrollada por **Juan Marcelo Bejarano**. La versión actual es la **1.5.0** (1 de noviembre de 2026).
 
 Cada versión indica qué cambió para los docentes y si hubo que publicar las reglas de Firestore (`firebase deploy --only firestore:rules`; siempre antes que la app).
+
+## [1.5.0] — 1/11/2026
+**Para los docentes**
+- **El panel docente ahora está organizado en cinco solapas**, en lugar de una sola pantalla larga:
+  - **Hoy:** avisos, pendientes de días anteriores, desafío de hoy, tareas extra y la aprobación de las jornadas de los líderes.
+  - **Semana:** premio de la semana, resumen semanal e historial de la evolución por equipo.
+  - **Calendario:** suplentes, días sin clase y Ed. Física puntual, y los días de Educación Física de la semana.
+  - **Líderes:** líderes de la semana con su avatar, y los PIN.
+  - **Puntos:** bonos, verificar puntos, historial y exportación a Excel, y "Volver a cero".
+- Se recuerda la última solapa abierta mientras la pestaña siga abierta, y lo que estés escribiendo en un formulario no se pierde al cambiar de solapa. Se puede navegar con las flechas del teclado.
+- La tabla de posiciones acompaña a *Hoy* y *Semana*; en el celular no se repite al pie de las otras solapas.
+
+**Técnico:** componente `Solapas.jsx` (accesible: roles `tablist`/`tab`/`tabpanel`) y `src/lib/solapas.js` con su prueba. Sin cambios en las reglas.
 
 ## [1.4.2] — 1/11/2026
 **Para los docentes**
