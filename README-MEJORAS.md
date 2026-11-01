@@ -1,4 +1,6 @@
-# Revisión y mejoras (31/10/2026)
+# Revisión y mejoras (31/10/2026 — actualizado el 1/11/2026, versión 1.4.0)
+
+> El detalle de cada versión está en [`CHANGELOG.md`](CHANGELOG.md). Lo que sigue es el registro de la revisión y lo que queda pendiente.
 
 Registro de lo que se revisó en el repo, lo que ya se corrigió con el patch y lo que todavía falta.
 
@@ -57,7 +59,7 @@ Orden recomendado para publicar: primero las reglas (`firebase deploy --only fir
 ## Lo que falta
 
 ### Verificar antes de publicar
-- [ ] Correr `npm run test:rules` y revisar que pasen las 18.
+- [x] Correr `npm run test:rules`: pasaron (21 pruebas con la versión 1.2.0; con la 1.4.0 son 32).
 - [ ] Alternativa: probar las reglas en el Rules Playground (alumno anónimo crea una jornada de hoy y otra de hace 10 días: la segunda debe fallar).
 - [ ] Si después de publicar los alumnos no pueden guardar, volver a publicar las reglas anteriores (`git revert` del commit de reglas y `firebase deploy --only firestore:rules`).
 - [ ] Prueba manual con una cuenta docente: aprobar todo un bloque, quitar una aprobación y mirar que el puntaje baje; aprobar una jornada de ayer desde la bandeja.
@@ -70,7 +72,7 @@ Orden recomendado para publicar: primero las reglas (`firebase deploy --only fir
 
 ### Cambios más grandes
 - [ ] **Puntos como fuente única de verdad.** Hoy los puntos son un contador (`turnos`) separado de las jornadas. Por eso la cuenta de Ed. Física puede sumar +10 sin atarlo a una jornada, y un docente puede editar `turnos` a mano. Cerrarlo del todo requiere una Cloud Function (plan Blaze) o calcular los puntos desde jornadas y bonos.
-- [ ] **PIN por líder.** Cualquier alumno puede tomar el turno de otro líder y pisar su respuesta antes de que se apruebe.
+- [x] **PIN por líder** (versión 1.4.0): opcional, se carga desde el panel; requiere publicar las reglas.
 - [x] **Feriados argentinos precargados** como días sin clase (`src/data/feriados.js`; faltan los puentes de 2027 cuando salga el decreto).
 - [x] **Días de Ed. Física guardados en Firestore** en vez de en el código.
 
@@ -87,3 +89,13 @@ Orden recomendado para publicar: primero las reglas (`firebase deploy --only fir
 - [x] Si falla la lectura del documento de docente por la red, la app ahora avisa que no se pudo verificar la cuenta y ofrece reintentar.
 - [ ] Código sin uso por `RECORDAR_SESION = false` en `PlantContext.jsx`, y el líder elegido no se reinicia al pasar la medianoche.
 - [ ] El caché del service worker acumula archivos viejos de versiones anteriores (poco volumen).
+
+## Ronda del 1/11/2026 (versiones 1.2.0 a 1.4.0)
+Hecho: pruebas de ids contra reglas, error de red distinto de sin permisos, equipo sin jornada no gana, feriados precargados, días de Ed. Física en Firestore, Verificar puntos, avatares, PIN por líder, versión y créditos.
+
+Queda pendiente:
+- [ ] **Puntos como fuente única de verdad** (y con eso un solo criterio de ranking). *Verificar puntos* detecta y corrige descuadres, pero el contador sigue existiendo.
+- [ ] **Puentes turísticos y traslado del 20/11/2027:** agregarlos en `src/data/feriados.js` cuando salgan los decretos. El lunes 7/12/2026 (día no laborable) se marca a mano si no hay clase.
+- [ ] Verificar App Check en "Enforce" (probándolo antes con las claves reales; activado sin configurar bloquea a los alumnos).
+- [ ] Actualizar `firebase` a la versión 12 o 13 (avisos de `npm audit`).
+- [ ] Mejoras menores de la lista anterior (nombres confusos, código sin uso por `RECORDAR_SESION = false`, caché del service worker).

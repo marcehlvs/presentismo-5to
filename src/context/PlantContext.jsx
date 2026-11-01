@@ -84,6 +84,8 @@ const armarTareas = (conEdFisica, items = []) => [
     .filter((t) => t.momento !== 'edfisica' || conEdFisica),
 ];
 
+const TURNOS_IDS_LIDER = ALUMNOS.map((a) => a.id);
+
 export function PlantProvider({ children }) {
   const [fecha, setFecha] = useState(hoyISO);
   const [user, setUser] = useState(null);
@@ -103,6 +105,8 @@ export function PlantProvider({ children }) {
   const [diasTodosBruto, setDiasTodos] = useState([]); // solo docente: todos los días con novedades
   const [bonosTodos, setBonosTodos] = useState([]); // solo docente: todos los bonos
   const [premios, setPremios] = useState([]); // solo docente: todos los premios semanales
+  const [pinesRequeridos, setPinesRequeridos] = useState([]); // números de líder que tienen PIN (config/pines; los PIN no son públicos)
+  const [pinesDocente, setPinesDocente] = useState({}); // PIN de cada líder, solo para el docente
   const [versionesEF, setVersionesEF] = useState([]); // días de Ed. Física cargados por el docente (con fecha de vigencia)
   const [versionesLideres, setVersionesLideres] = useState([]); // cambios de líderes cargados por el docente (con fecha de vigencia)
   const [extras, setExtras] = useState([]); // tareas extra que agrega el docente para hoy
@@ -181,6 +185,8 @@ export function PlantProvider({ children }) {
       onSnapshot(semana('dias'), (s) => setDiasSemana(docsA(s)), fallo),
       onSnapshot(semana('bonos'), (s) => setBonosSemana(docsA(s)), fallo),
       onSnapshot(doc(db, 'premios', lunes), (s) => setPremioSemana(s.exists() ? s.data() : null), fallo),
+      onSnapshot(doc(db, 'config', 'pines'), (s) => setPinesRequeridos(s.exists() ? (s.data().requeridos ?? []).map(Number) : []), fallo),
+      solo(esDocente, () => onSnapshot(collection(db, 'pines'), (s) => setPinesDocente(Object.fromEntries(s.docs.map((d) => [Number(d.id), d.data().pin]))), fallo)),
       onSnapshot(doc(db, 'config', 'edfisica'), (s) => setVersionesEF(s.exists() ? s.data().versiones ?? [] : []), fallo),
       onSnapshot(doc(db, 'config', 'lideres'), (s) => setVersionesLideres(s.exists() ? s.data().versiones ?? [] : []), fallo),
       solo(esDocente, () => onSnapshot(collection(db, 'jornadas'), (s) => setHistorial(docsA(s)), fallo)),
@@ -237,9 +243,19 @@ export function PlantProvider({ children }) {
       .catch((e) => setError(mensajeError(e)));
 
   // ---- Alumno: declara tareas y envía su respuesta; no suma puntos por su cuenta ----
-  const iniciarTurno = (id) => {
+  // Si el líder tiene PIN, primero se prueba el PIN (las reglas lo validan al guardar la sesión). Devuelve { ok } o { ok: false, mensaje }.
+  const iniciarTurno = async (id, pin = '') => {
+    if (pinesRequeridos.includes(id)) {
+      if (!/^\d{4}$/.test(pin)) return { ok: false, mensaje: 'Escribí el PIN de 4 números.' };
+      try {
+        await setDoc(doc(db, 'sesiones', user.uid), { jefeId: id, pin, fecha });
+      } catch (e) {
+        return { ok: false, mensaje: e?.code === 'permission-denied' ? 'PIN incorrecto. Pedíselo al docente.' : mensajeError(e) };
+      }
+    }
     setJefeId(id);
     if (RECORDAR_SESION) try { localStorage.setItem(SESION_KEY, JSON.stringify({ fecha, jefeId: id })); } catch { /* sin almacenamiento */ }
+    return { ok: true };
   };
   const cerrarTurno = () => {
     setJefeId(null);
@@ -448,6 +464,36 @@ export function PlantProvider({ children }) {
     }
   };
 
+  // Docente: carga o cambia el PIN de un líder (4 números). El PIN queda en pines/{id} (solo docentes) y el número del líder en config/pines.
+  const guardarPin = async (id, pin) => {
+    if (!TURNOS_IDS_LIDER.includes(id) || !/^\d{4}$/.test(pin)) return false;
+    try {
+      const lote = writeBatch(db);
+      lote.set(doc(db, 'pines', String(id)), { pin });
+      lote.set(doc(db, 'config', 'pines'), { requeridos: [...new Set([...pinesRequeridos, id])].sort((a, b) => a - b) });
+      await lote.commit();
+      setError('');
+      return true;
+    } catch (e) {
+      setError(mensajeError(e));
+      return false;
+    }
+  };
+
+  const quitarPin = async (id) => {
+    try {
+      const lote = writeBatch(db);
+      lote.delete(doc(db, 'pines', String(id)));
+      lote.set(doc(db, 'config', 'pines'), { requeridos: pinesRequeridos.filter((x) => x !== id) });
+      await lote.commit();
+      setError('');
+      return true;
+    } catch (e) {
+      setError(mensajeError(e));
+      return false;
+    }
+  };
+
   // Docente: cambia los días de la semana con Ed. Física a partir de una fecha. Lo anterior no se toca (el historial conserva los días de entonces).
   const guardarDiasEdFisica = async (desde, dias) => {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(desde) || validarDiasEdFisica(dias)) return false;
@@ -572,6 +618,7 @@ export function PlantProvider({ children }) {
     semana, resumenSemana, premioSemana, historial, premios, publicarPremio, reiniciarPuntos,
     diaHoy, hoySinClase, suplentesHoy, jornadasSemana, bonosSemana, diasTodos, bonosTodos, sinClaseTodos, edFisicaTodos,
     sinClaseDe, tareasEn,
+    pinesRequeridos, pinesDocente, guardarPin, quitarPin,
     puntajes, corregirPuntos, versionesEF, diasEdFisicaHoy: diasEdFisicaEn(versionesEF, fecha), guardarDiasEdFisica, quitarVersionEdFisica,
     designarSuplente, marcarSinClase, marcarEdFisica, programarEdFisica, cargarBono, quitarBono,
     jornadasHoy, aprobarTarea, rechazarTarea, aprobarDesafio, rechazarDesafio, loginDocente, logoutDocente,

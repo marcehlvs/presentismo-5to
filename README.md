@@ -1,5 +1,7 @@
 # Operación: Jefe de Planta
 
+**Versión 1.4.0** · Desarrollada por **Juan Marcelo Bejarano** · [Historial de cambios](CHANGELOG.md)
+
 > 📋 ¿Sos docente? Mirá la [guía de funcionalidades para docentes](README-DOCENTES.md).
 
 ```bash
@@ -88,3 +90,9 @@ La app se puede instalar en el celular o la computadora (PWA): `public/manifest.
 ## Avatares y verificación de puntos
 - **Avatares:** cada Jefe de Planta tiene un avatar (emoji) que se ve en su pantalla, en el inicio de sesión, en la tabla de posiciones y en el modo pantalla. La lista está en `src/data/avatares.js` y el docente lo elige en "Líderes de la semana" junto con el nombre y el día (se guarda en `config/lideres`, así que no requiere cambiar las reglas). Si un líder no tiene avatar cargado, se usa el del puesto (`mockData.js`).
 - **Verificar puntos:** en el panel docente compara el contador de cada equipo (`turnos/{id}.puntos`, lo que ve la tabla) con el total calculado desde las jornadas y los bonos (`src/lib/verificarPuntos.js`; cuenta también los días sin clase que ya tenían puntos). Si hay diferencia, "Corregir" deja el contador igual al calculado.
+
+## PIN por líder
+Cada líder puede tener un PIN de 4 números (`pines/{id}`, solo lo leen los docentes). La lista de líderes con PIN es pública (`config/pines`, solo números de líder). El alumno que elige un líder con PIN escribe el PIN: se guarda `sesiones/{uid}` y las reglas (`conSesion`) solo permiten escribir las jornadas de ese líder a la cuenta con la sesión válida y el PIN vigente. Si un líder no tiene PIN, no se pide nada. Al publicar: **primero las reglas**, después la app.
+
+## Versiones
+La versión está en `package.json` y se muestra al pie de la app; `CHANGELOG.md` registra los cambios y una prueba (`src/lib/version.test.js`) exige que ambos coincidan. Para publicar una versión nueva: subir `version` en `package.json` y agregar su entrada arriba en `CHANGELOG.md`.

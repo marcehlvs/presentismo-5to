@@ -1,5 +1,6 @@
 import { HardHat, CalendarDays, Power, LogOut } from 'lucide-react';
 import Avatar from './Avatar';
+import Creditos from './Creditos';
 import { usePlant } from '../context/PlantContext';
 import Checklist from './Checklist';
 import { equipoDe } from '../data/mockData';
@@ -73,6 +74,7 @@ export default function Dashboard() {
           <PremioSemana />
         </div>
       </main>
+      <Creditos className="pb-6" />
     </div>
   );
 }

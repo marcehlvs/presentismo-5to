@@ -10,8 +10,10 @@ import RevisionDesafio from './RevisionDesafio';
 import DiasEspeciales from './DiasEspeciales';
 import Bonos from './Bonos';
 import EvolucionSemanal from './EvolucionSemanal';
+import Creditos from './Creditos';
 import DiasEdFisicaEditor from './DiasEdFisicaEditor';
 import LideresEditor from './LideresEditor';
+import PinesEditor from './PinesEditor';
 import VerificarPuntos from './VerificarPuntos';
 import ResumenSemanal from './ResumenSemanal';
 import Pendientes from './Pendientes';
@@ -365,6 +367,7 @@ export default function PanelDocente() {
           <DiasEspeciales />
           <DiasEdFisicaEditor />
           <LideresEditor />
+          <PinesEditor />
           <Bonos />
           <VerificarPuntos />
           {jornadasHoy.length === 0 && (
@@ -402,6 +405,7 @@ export default function PanelDocente() {
         </div>
         <Leaderboard />
       </main>
+      <Creditos className="pb-6" />
     </div>
   );
 }

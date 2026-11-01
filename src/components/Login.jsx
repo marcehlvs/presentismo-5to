@@ -4,15 +4,25 @@ import { usePlant } from '../context/PlantContext';
 import { equipoDe } from '../data/mockData';
 import AvisoSinClase from './AvisoSinClase';
 import Avatar from './Avatar';
+import Creditos from './Creditos';
 import BotonInstalar from './BotonInstalar';
 
 export default function Login() {
-  const { alumnos, iniciarTurno, jefeSugerido, hoySinClase, suplentesHoy } = usePlant();
+  const { alumnos, iniciarTurno, jefeSugerido, hoySinClase, suplentesHoy, pinesRequeridos } = usePlant();
   const [id, setId] = useState(jefeSugerido ? String(jefeSugerido.id) : '');
 
-  const handleSubmit = (e) => {
+  const [pin, setPin] = useState('');
+  const [errorPin, setErrorPin] = useState('');
+  const [probando, setProbando] = useState(false);
+  const pideSuPin = id !== '' && pinesRequeridos.includes(Number(id));
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (id && !hoySinClase) iniciarTurno(Number(id));
+    if (!id || hoySinClase) return;
+    setProbando(true);
+    const r = await iniciarTurno(Number(id), pin);
+    setProbando(false);
+    if (!r.ok) setErrorPin(r.mensaje);
   };
   const suplenteSugerido = jefeSugerido ? suplentesHoy[String(jefeSugerido.id)] : null;
 
@@ -35,7 +45,7 @@ export default function Login() {
             <select
               id="alumno"
               value={id}
-              onChange={(e) => setId(e.target.value)}
+              onChange={(e) => { setId(e.target.value); setPin(''); setErrorPin(''); }}
               className="w-full border-2 border-acero rounded-md px-3 py-2.5 bg-white focus:outline-none focus:ring-4 focus:ring-seguridad/60"
             >
               <option value="">Elegí tu nombre</option>
@@ -59,9 +69,22 @@ export default function Login() {
             )}
           </div>
 
+          {pideSuPin && (
+            <div className="space-y-2">
+              <label htmlFor="pin" className="block font-medium">PIN del líder (4 números)</label>
+              <input
+                id="pin" value={pin} inputMode="numeric" autoComplete="off" maxLength={4} type="password"
+                onChange={(e) => { setPin(e.target.value.replace(/\D/g, '').slice(0, 4)); setErrorPin(''); }}
+                className="w-full border-2 border-acero rounded-md px-3 py-2.5 bg-white tracking-[0.5em] focus:outline-none focus:ring-4 focus:ring-seguridad/60"
+              />
+              <p className="text-sm text-acero/70">Si sos suplente, pedile el PIN al docente.</p>
+            </div>
+          )}
+          {errorPin && <p role="alert" className="text-sm font-semibold text-alarma">{errorPin}</p>}
+
           <button
             type="submit"
-            disabled={!id || hoySinClase}
+            disabled={!id || hoySinClase || probando || (pideSuPin && pin.length !== 4)}
             className="w-full flex items-center justify-center gap-2 bg-seguridad text-acero font-display text-2xl font-bold py-2.5 rounded-md border-2 border-acero transition enabled:hover:bg-acero enabled:hover:text-seguridad disabled:opacity-40 disabled:cursor-not-allowed focus:outline-none focus-visible:ring-4 focus-visible:ring-seguridad/60"
           >
             <HardHat className="size-6" aria-hidden="true" />
@@ -69,6 +92,7 @@ export default function Login() {
           </button>
           <a href="/pantalla" className="block text-center text-sm underline text-acero/70 hover:text-acero">Abrir modo pantalla</a>
           <BotonInstalar />
+          <Creditos />
         </form>
       </div>
     </main>

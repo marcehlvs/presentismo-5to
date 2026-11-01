@@ -148,6 +148,80 @@ describe('config (líderes y días de Ed. Física con fecha de vigencia)', () =>
   });
 });
 
+describe('PIN por líder', () => {
+  const sesion = (jefeId, pin, fecha = HOY) => ({ jefeId, pin, fecha });
+  const jornada = (jefeId) => ({ fecha: HOY, jefeId, declaradas: { fichaje: true } });
+
+  beforeEach(async () => {
+    await sembrar(async (db) => {
+      await setDoc(doc(db, 'pines', '1'), { pin: '1234' });
+      await setDoc(doc(db, 'config', 'pines'), { requeridos: [1] });
+    });
+  });
+
+  it('sin sesión no se escribe la jornada de un líder con PIN, pero los líderes sin PIN siguen libres', async () => {
+    await assertFails(setDoc(doc(alumno(), 'jornadas', `${HOY}_1`), jornada(1)));
+    await assertSucceeds(setDoc(doc(alumno(), 'jornadas', `${HOY}_3`), jornada(3)));
+  });
+
+  it('con el PIN correcto se crea la sesión y se escribe la jornada', async () => {
+    await assertSucceeds(setDoc(doc(alumno(), 'sesiones', 'alumno'), sesion(1, '1234')));
+    await assertSucceeds(setDoc(doc(alumno(), 'jornadas', `${HOY}_1`), jornada(1)));
+  });
+
+  it('con un PIN incorrecto no se crea la sesión', async () => {
+    await assertFails(setDoc(doc(alumno(), 'sesiones', 'alumno'), sesion(1, '0000')));
+    await assertFails(setDoc(doc(alumno(), 'sesiones', 'alumno'), sesion(1, '')));
+  });
+
+  it('la sesión de un líder no sirve para otro líder con PIN', async () => {
+    await sembrar((db) => setDoc(doc(db, 'pines', '2'), { pin: '5555' }));
+    await assertSucceeds(setDoc(doc(alumno(), 'sesiones', 'alumno'), sesion(1, '1234')));
+    await assertFails(setDoc(doc(alumno(), 'jornadas', `${HOY}_2`), jornada(2)));
+  });
+
+  it('no se puede crear la sesión de otra cuenta', async () => {
+    await assertFails(setDoc(doc(alumno(), 'sesiones', 'otro'), sesion(3, '')));
+  });
+
+  it('si el docente cambia el PIN, la sesión vieja deja de valer', async () => {
+    await assertSucceeds(setDoc(doc(alumno(), 'sesiones', 'alumno'), sesion(1, '1234')));
+    await sembrar((db) => setDoc(doc(db, 'pines', '1'), { pin: '9999' }));
+    await assertFails(setDoc(doc(alumno(), 'jornadas', `${HOY}_1`), jornada(1)));
+  });
+
+  it('una sesión con fecha lejana no sirve', async () => {
+    await assertFails(setDoc(doc(alumno(), 'sesiones', 'alumno'), sesion(1, '1234', VIEJO)));
+  });
+
+  it('los alumnos no leen los PIN; el docente los lee y los cambia con 4 dígitos', async () => {
+    await assertFails(getDoc(doc(alumno(), 'pines', '1')));
+    await assertSucceeds(getDoc(doc(docente(), 'pines', '1')));
+    await assertSucceeds(setDoc(doc(docente(), 'pines', '2'), { pin: '4321' }));
+    await assertFails(setDoc(doc(docente(), 'pines', '2'), { pin: '123' }));
+    await assertFails(setDoc(doc(docente(), 'pines', '9'), { pin: '1234' }));
+    await assertFails(setDoc(doc(alumno(), 'pines', '2'), { pin: '4321' }));
+    await assertSucceeds(deleteDoc(doc(docente(), 'pines', '1')));
+  });
+
+  it('la lista de líderes con PIN la lee cualquiera y la escribe solo el docente', async () => {
+    await assertSucceeds(getDoc(doc(alumno(), 'config', 'pines')));
+    await assertSucceeds(setDoc(doc(docente(), 'config', 'pines'), { requeridos: [1, 2] }));
+    await assertFails(setDoc(doc(alumno(), 'config', 'pines'), { requeridos: [] }));
+  });
+
+  it('el docente sigue escribiendo jornadas de líderes con PIN', async () => {
+    await assertSucceeds(setDoc(doc(docente(), 'jornadas', `${HOY}_1`), jornada(1)));
+  });
+
+  it('actualizar una jornada existente también exige la sesión', async () => {
+    await sembrar((db) => setDoc(doc(db, 'jornadas', `${HOY}_1`), jornada(1)));
+    await assertFails(updateDoc(doc(alumno(), 'jornadas', `${HOY}_1`), { 'declaradas.fichaje': false }));
+    await assertSucceeds(setDoc(doc(alumno(), 'sesiones', 'alumno'), sesion(1, '1234')));
+    await assertSucceeds(updateDoc(doc(alumno(), 'jornadas', `${HOY}_1`), { 'declaradas.fichaje': false }));
+  });
+});
+
 describe('superadmin', () => {
   it('borra jornadas', async () => {
     await assertSucceeds(deleteDoc(doc(superadmin(), 'jornadas', `${VIEJO}_1`)));
