@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { Printer } from 'lucide-react';
 import { usePlant } from '../context/PlantContext';
 import { TURNOS } from '../data/mockData';
+import { textoGrupo } from '../lib/grupos';
 import { CRITERIO_GANADOR, etiquetaDia, etiquetaSemana, lunesDe, puntosDeJornada, resumenTurnos, sumarDias } from '../lib/semanas';
 import { btn, campo } from './estilos';
 
@@ -104,9 +105,42 @@ export function HojaResumen({ d, alumnosEn }) {
   );
 }
 
+// Beneficio de la semana: para el equipo ganador (líder y grupo sorteado) y, si se quiere, para el segundo
+function BeneficioSemana({ d, alumnosEn, gruposDocs }) {
+  const [conSegundo, setConSegundo] = useState(false);
+  const { lista, ganador, empate } = d.resumen;
+  const sorteo = gruposDocs.find((g) => g.semana === d.lunes);
+  const lideres = alumnosEn(d.lunes);
+  const segundo = ganador && lista[1]?.compite ? lista[1] : null;
+  const premiados = [ganador, ...(conSegundo && segundo ? [segundo] : [])].filter(Boolean);
+
+  return (
+    <div className="mb-4 rounded-md border-2 border-seguridad bg-seguridad/15 p-3">
+      <h3 className="font-display text-xl font-bold mb-1">Beneficio de la semana</h3>
+      {empate && <p className="text-sm">Hay empate en el primer puesto: definan el desempate antes de entregar el beneficio.</p>}
+      {!ganador && !empate && <p className="text-sm">Todavía no hay un equipo ganador en esta semana.</p>}
+      {premiados.map((t) => {
+        const lider = lideres.find((a) => a.turno === t.id);
+        const grupo = lider ? textoGrupo(sorteo, lider.id) : '';
+        return (
+          <p key={t.id} className="text-sm mb-1">
+            <b>{TURNOS.find((x) => x.id === t.id)?.nombre}</b>{t === ganador ? ' (ganador)' : ' (segundo)'}: {grupo ? <>n.º de lista <span className="tabular-nums">{grupo}</span></> : 'esta semana no se sortearon los grupos.'}
+          </p>
+        );
+      })}
+      {segundo && (
+        <label className="mt-1 flex items-center gap-2 text-sm">
+          <input type="checkbox" checked={conSegundo} onChange={(e) => setConSegundo(e.target.checked)} className="size-4" />
+          Incluir también al segundo equipo
+        </label>
+      )}
+    </div>
+  );
+}
+
 // Elegís la semana, la ves acá y la imprimís (o la guardás como PDF desde el cuadro de impresión)
 export default function ResumenSemanal() {
-  const { historial, bonosTodos, diasTodos, premios, sinClaseTodos, edFisicaTodos, semana, alumnosEn } = usePlant();
+  const { historial, bonosTodos, diasTodos, premios, sinClaseTodos, edFisicaTodos, semana, alumnosEn, gruposDocs } = usePlant();
   const [sel, setSel] = useState(semana);
 
   const semanas = useMemo(
@@ -142,6 +176,7 @@ export default function ResumenSemanal() {
             <Printer className="size-4" aria-hidden="true" />Imprimir o guardar PDF
           </button>
         </div>
+        <BeneficioSemana d={d} alumnosEn={alumnosEn} gruposDocs={gruposDocs} />
         <div className="overflow-x-auto rounded-md border-2 border-acero/20"><HojaResumen d={d} alumnosEn={alumnosEn} /></div>
       </section>
       {createPortal(<div className="solo-impresion"><HojaResumen d={d} alumnosEn={alumnosEn} /></div>, document.body)}

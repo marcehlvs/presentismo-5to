@@ -12,6 +12,7 @@ import Bonos from './Bonos';
 import EvolucionSemanal from './EvolucionSemanal';
 import Creditos from './Creditos';
 import DiasEdFisicaEditor from './DiasEdFisicaEditor';
+import GruposSemana from './GruposSemana';
 import LideresEditor from './LideresEditor';
 import PinesEditor from './PinesEditor';
 import VerificarPuntos from './VerificarPuntos';
@@ -394,7 +395,7 @@ export default function PanelDocente() {
     { id: 'hoy', titulo: 'Hoy', contenido: hoy },
     { id: 'semana', titulo: 'Semana', contenido: <><FormularioPremio /><ResumenSemanal /><EvolucionSemanal /></> },
     { id: 'calendario', titulo: 'Calendario', contenido: <><DiasEspeciales /><DiasEdFisicaEditor /></> },
-    { id: 'lideres', titulo: 'Líderes', contenido: <><LideresEditor /><PinesEditor /></> },
+    { id: 'lideres', titulo: 'Líderes', contenido: <><GruposSemana /><LideresEditor /><PinesEditor /></> },
     { id: 'puntos', titulo: 'Puntos', contenido: <><Bonos /><VerificarPuntos /><Historial /><ReiniciarPuntos /></> },
   ];
 

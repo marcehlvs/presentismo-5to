@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Gift, Maximize, Trophy, WifiOff } from 'lucide-react';
 import { usePlant } from '../context/PlantContext';
+import { textoGrupo } from '../lib/grupos';
 import { TURNOS } from '../data/mockData';
 import { CRITERIO_GANADOR, etiquetaDia, etiquetaSemana } from '../lib/semanas';
 import AvisoSinClase from './AvisoSinClase';
@@ -38,7 +39,7 @@ const MEDALLA = ['bg-seguridad text-acero', 'bg-hormigon text-acero', 'bg-[#c98a
 
 // Vista para la pantalla interactiva del aula: ranking y premio en grande. Se actualiza sola (Firestore en tiempo real).
 export default function ModoPantalla() {
-  const { ranking, semana, premioSemana, resumenSemana, bonosSemana, fecha, jornada, alumnos, hoyEdFisica } = usePlant();
+  const { ranking, semana, premioSemana, resumenSemana, bonosSemana, fecha, jornada, alumnos, hoyEdFisica, gruposSemana } = usePlant();
   const conectado = useConectado();
   useMantenerEncendida();
   const maximo = ranking[0]?.puntos || 1;
@@ -87,6 +88,7 @@ export default function ModoPantalla() {
                     <div className="min-w-0 flex-1">
                       <p className="truncate font-display text-[clamp(1.25rem,min(2.6vw,4.4vh),2.8rem)] font-bold leading-tight">{t.nombre}</p>
                       {l && <p className="text-[clamp(0.8rem,min(1.2vw,2vh),1.2rem)] text-acero/70">{l.avatar ? `${l.avatar} ` : ''}Líder: {l.nombre} · {l.dia}</p>}
+                      {l && textoGrupo(gruposSemana, l.id) && <p className="truncate text-[clamp(0.8rem,min(1.2vw,2vh),1.2rem)] text-acero/70 tabular-nums">Grupo: {textoGrupo(gruposSemana, l.id)}</p>}
                     </div>
                     <p className="font-display text-[clamp(1.5rem,min(3.4vw,6vh),3.6rem)] font-bold tabular-nums leading-none">{t.puntos}<span className="ml-1 text-[0.45em] font-semibold">pts</span></p>
                   </div>

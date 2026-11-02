@@ -1,5 +1,5 @@
 import { esAvatar } from '../data/avatares';
-import { ALUMNOS } from '../data/mockData';
+import { ALUMNOS, TOTAL_CURSO } from '../data/mockData';
 
 // Los líderes se pueden cambiar desde el panel docente con una fecha de vigencia ("desde el lunes 2/11 el líder es X").
 // Se guardan en Firestore (config/lideres) como una lista de versiones: { desde: 'AAAA-MM-DD', items: [{ id, nombre, dia }] }.
@@ -8,6 +8,7 @@ import { ALUMNOS } from '../data/mockData';
 
 export const DIAS_CLASE = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes'];
 
+const numeroValido = (n) => Number.isInteger(n) && n >= 1 && n <= TOTAL_CURSO;
 const textoValido = (v) => typeof v === 'string' && v.trim().length > 0;
 
 export function alumnosEn(versiones, fecha) {
@@ -19,7 +20,7 @@ export function alumnosEn(versiones, fecha) {
   return ALUMNOS.map((base) => {
     const c = vigente.items.find((x) => Number(x?.id) === base.id);
     if (!c || !textoValido(c.nombre) || !DIAS_CLASE.includes(c.dia)) return base;
-    return { ...base, nombre: c.nombre.trim(), dia: c.dia, avatar: esAvatar(c.avatar) ? c.avatar : base.avatar };
+    return { ...base, nombre: c.nombre.trim(), dia: c.dia, avatar: esAvatar(c.avatar) ? c.avatar : base.avatar, numero: numeroValido(c.numero) ? c.numero : base.numero };
   });
 }
 
@@ -29,6 +30,9 @@ export function validarLideres(items) {
   if (items.some((x) => !textoValido(x.nombre))) return 'Todos los líderes necesitan un nombre.';
   if (items.some((x) => !DIAS_CLASE.includes(x.dia))) return 'Elegí un día de lunes a viernes para cada líder.';
   if (items.some((x) => x.avatar != null && !esAvatar(x.avatar))) return 'Elegí un avatar de la lista.';
+  if (items.some((x) => x.numero != null && !numeroValido(x.numero))) return `Cada líder necesita su número de lista (de 1 a ${TOTAL_CURSO}).`;
+  const numeros = items.map((x) => x.numero ?? ALUMNOS.find((a) => a.id === Number(x.id))?.numero);
+  if (new Set(numeros).size !== items.length) return 'Dos líderes tienen el mismo número de lista.';
   if (new Set(items.map((x) => x.dia)).size !== items.length) return 'Cada día tiene que tener un solo líder: hay dos con el mismo día.';
   return '';
 }
@@ -36,7 +40,7 @@ export function validarLideres(items) {
 export function limpiarItems(items) {
   return [...items]
     .sort((a, b) => a.id - b.id)
-    .map((x) => ({ id: Number(x.id), nombre: String(x.nombre).trim().slice(0, 40), dia: x.dia, ...(esAvatar(x.avatar) ? { avatar: x.avatar } : {}) }));
+    .map((x) => ({ id: Number(x.id), nombre: String(x.nombre).trim().slice(0, 40), dia: x.dia, ...(esAvatar(x.avatar) ? { avatar: x.avatar } : {}), ...(numeroValido(x.numero) ? { numero: x.numero } : {}) }));
 }
 
 // Agrega o reemplaza la versión de esa fecha y deja la lista ordenada

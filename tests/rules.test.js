@@ -2,7 +2,7 @@
 import { readFileSync } from 'node:fs';
 import { afterAll, beforeAll, beforeEach, describe, it } from 'vitest';
 import { assertFails, assertSucceeds, initializeTestEnvironment } from '@firebase/rules-unit-testing';
-import { deleteDoc, doc, getDoc, increment, setDoc, updateDoc } from 'firebase/firestore';
+import { deleteDoc, doc, getDoc, increment, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore';
 
 let env;
 
@@ -145,6 +145,33 @@ describe('config (líderes y días de Ed. Física con fecha de vigencia)', () =>
     await assertFails(setDoc(doc(docente(), 'config', 'otro'), edf));
     await assertFails(setDoc(doc(docente(), 'config', 'edfisica'), { versiones: [], extra: 1 }));
     await assertFails(setDoc(doc(docente(), 'config', 'edfisica'), { versiones: 'lunes' }));
+  });
+});
+
+describe('grupos de la semana', () => {
+  const sorteo = (intentos) => ({ semana: '2026-11-02', creado: serverTimestamp(), intentos, lideres: { 1: 10 }, grupos: { 1: [3, 4] } });
+
+  it('el docente crea el sorteo con intentos 1 y cualquiera con sesión lo lee', async () => {
+    await assertSucceeds(setDoc(doc(docente(), 'grupos', '2026-11-02'), sorteo(1)));
+    await assertSucceeds(getDoc(doc(alumno(), 'grupos', '2026-11-02')));
+  });
+
+  it('los alumnos no crean ni cambian sorteos', async () => {
+    await assertFails(setDoc(doc(alumno(), 'grupos', '2026-11-02'), sorteo(1)));
+    await sembrar((db) => setDoc(doc(db, 'grupos', '2026-11-02'), { ...sorteo(1), creado: new Date() }));
+    await assertFails(setDoc(doc(alumno(), 'grupos', '2026-11-02'), sorteo(2)));
+  });
+
+  it('un nuevo sorteo de la misma semana suma exactamente 1', async () => {
+    await sembrar((db) => setDoc(doc(db, 'grupos', '2026-11-02'), { ...sorteo(1), creado: new Date() }));
+    await assertSucceeds(setDoc(doc(docente(), 'grupos', '2026-11-02'), sorteo(2)));
+    await assertFails(setDoc(doc(docente(), 'grupos', '2026-11-02'), sorteo(5)));
+  });
+
+  it('no se crea con intentos distinto de 1, con otra semana ni con un id que no es fecha', async () => {
+    await assertFails(setDoc(doc(docente(), 'grupos', '2026-11-02'), sorteo(3)));
+    await assertFails(setDoc(doc(docente(), 'grupos', '2026-11-09'), sorteo(1)));
+    await assertFails(setDoc(doc(docente(), 'grupos', 'hola'), { ...sorteo(1), semana: 'hola' }));
   });
 });
 

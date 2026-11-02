@@ -1,4 +1,4 @@
-# Revisión y mejoras (31/10/2026 — actualizado el 1/11/2026, versión 1.5.0)
+# Revisión y mejoras (31/10/2026 — actualizado el 1/11/2026, versión 1.6.0)
 
 > El detalle de cada versión está en [`CHANGELOG.md`](CHANGELOG.md). Lo que sigue es el registro de la revisión y lo que queda pendiente.
 
@@ -90,10 +90,11 @@ Orden recomendado para publicar: primero las reglas (`firebase deploy --only fir
 - [ ] Código sin uso por `RECORDAR_SESION = false` en `PlantContext.jsx`, y el líder elegido no se reinicia al pasar la medianoche.
 - [ ] El caché del service worker acumula archivos viejos de versiones anteriores (poco volumen).
 
-## Ronda del 1/11/2026 (versiones 1.2.0 a 1.5.0)
-Hecho: panel docente en solapas, ajuste del ancho en el celular, contraseña y PIN con botón para mostrar u ocultar, pruebas de ids contra reglas, error de red distinto de sin permisos, equipo sin jornada no gana, feriados precargados, días de Ed. Física en Firestore, Verificar puntos, avatares, PIN por líder, versión y créditos.
+## Ronda del 1/11/2026 (versiones 1.2.0 a 1.6.0)
+Hecho: grupos aleatorios de la semana con beneficio para el equipo ganador, panel docente en solapas, ajuste del ancho en el celular, contraseña y PIN con botón para mostrar u ocultar, pruebas de ids contra reglas, error de red distinto de sin permisos, equipo sin jornada no gana, feriados precargados, días de Ed. Física en Firestore, Verificar puntos, avatares, PIN por líder, versión y créditos.
 
 Queda pendiente:
+- [ ] **Bonus por asistencia con escala** (más puntos a los equipos que más vienen) y asistencia por número de lista dentro de cada grupo, con "ausencia justificada".
 - [ ] **Puntos como fuente única de verdad** (y con eso un solo criterio de ranking). *Verificar puntos* detecta y corrige descuadres, pero el contador sigue existiendo.
 - [ ] **Puentes turísticos y traslado del 20/11/2027:** agregarlos en `src/data/feriados.js` cuando salgan los decretos. El lunes 7/12/2026 (día no laborable) se marca a mano si no hay clase.
 - [ ] Verificar App Check en "Enforce" (probándolo antes con las claves reales; activado sin configurar bloquea a los alumnos).

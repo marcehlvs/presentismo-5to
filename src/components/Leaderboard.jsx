@@ -1,8 +1,9 @@
 import { Trophy } from 'lucide-react';
 import { usePlant } from '../context/PlantContext';
+import { textoGrupo } from '../lib/grupos';
 
 export default function Leaderboard() {
-  const { ranking, jefe, alumnos } = usePlant();
+  const { ranking, jefe, alumnos, gruposSemana } = usePlant();
   const maximo = ranking[0]?.puntos || 1;
 
   return (
@@ -30,6 +31,9 @@ export default function Leaderboard() {
                 <span className="font-display text-2xl font-bold tabular-nums">{t.puntos} pts</span>
               </div>
               {lider && <p className="text-sm text-acero/70 pl-8">{lider.avatar ? `${lider.avatar} ` : ''}Líder: {lider.nombre} · {lider.dia}</p>}
+              {lider && textoGrupo(gruposSemana, lider.id) && (
+                <p className="text-sm text-acero/70 pl-8">Grupo (n.º de lista): <span className="tabular-nums">{textoGrupo(gruposSemana, lider.id)}</span></p>
+              )}
               <div className="h-1.5 bg-hormigon rounded-full mt-2 overflow-hidden">
                 <div
                   className="h-full bg-acero transition-all duration-500"

@@ -1,8 +1,17 @@
 # Historial de versiones — Operación: Jefe de Planta
 
-Aplicación desarrollada por **Juan Marcelo Bejarano**. La versión actual es la **1.5.0** (1 de noviembre de 2026).
+Aplicación desarrollada por **Juan Marcelo Bejarano**. La versión actual es la **1.6.0** (1 de noviembre de 2026).
 
 Cada versión indica qué cambió para los docentes y si hubo que publicar las reglas de Firestore (`firebase deploy --only firestore:rules`; siempre antes que la app).
+
+## [1.6.0] — 2/11/2026
+**Para los docentes**
+- **Grupos de la semana.** En la solapa *Líderes*, el botón *Sortear grupos de esta semana* reparte a los 24 alumnos, por número de lista, entre los 5 líderes: cuatro grupos de 5 (líder + 4) y uno de 4 (líder + 3). Nadie queda en dos grupos y ningún líder es compañero de otro. El sorteo usa el generador aleatorio del navegador, evita repetir los grupos de las últimas 4 semanas y queda registrado con fecha, hora y cantidad de sorteos (volver a sortear se puede, pero se ve).
+- **Todos ven los grupos** en la tabla de posiciones (línea "Grupo (n.º de lista)") y en el modo pantalla. Solo se guardan números de lista, nunca nombres.
+- **Beneficio de la semana.** En la solapa *Semana*, el resumen muestra el equipo ganador con los números de lista de su grupo, y una casilla para incluir también al segundo equipo. Si hay empate lo avisa.
+- **Número de lista de cada líder** (10, 6, 17, 9 y 23 al comienzo): se cambia en *Líderes de la semana* cuando cambian los líderes.
+
+**Técnico:** reglas nuevas para `grupos/{lunes}` (lo crea y lo vuelve a sortear solo el docente; cada nuevo sorteo suma exactamente 1 al contador; lo lee cualquiera con sesión). **Hay que publicar las reglas.** 4 pruebas nuevas de reglas y 11 de la lógica de grupos.
 
 ## [1.5.0] — 1/11/2026
 **Para los docentes**

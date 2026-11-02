@@ -9,6 +9,7 @@ import { ALUMNOS, TURNOS, TAREAS, TAREAS_EDFISICA, PUNTAJES_INICIALES, getJornad
 import {
   BONO_MAXIMO, aplicarFeriados, PUNTOS_CHECKLIST, PUNTOS_CIERRE, PUNTOS_DESAFIO, PUNTOS_EDFISICA, TAREA_EXTRA_MAX, conVersionEdFisica, crearDiasEdFisica, deIso, diasEdFisicaEn, sinVersionEdFisica, validarDiasEdFisica, hoyISO, lunesDe, resumenTurnos, sumarDias,
 } from '../lib/semanas';
+import { sortearGrupos, validarGrupos } from '../lib/grupos';
 import { alumnosEn, conVersion, sinVersion, validarLideres } from '../lib/lideres';
 import { premiosTrasAprobacion } from '../lib/premios';
 
@@ -105,6 +106,7 @@ export function PlantProvider({ children }) {
   const [diasTodosBruto, setDiasTodos] = useState([]); // solo docente: todos los días con novedades
   const [bonosTodos, setBonosTodos] = useState([]); // solo docente: todos los bonos
   const [premios, setPremios] = useState([]); // solo docente: todos los premios semanales
+  const [gruposDocs, setGruposDocs] = useState([]); // sorteos de grupos de todas las semanas (uno por semana)
   const [pinesRequeridos, setPinesRequeridos] = useState([]); // números de líder que tienen PIN (config/pines; los PIN no son públicos)
   const [pinesDocente, setPinesDocente] = useState({}); // PIN de cada líder, solo para el docente
   const [versionesEF, setVersionesEF] = useState([]); // días de Ed. Física cargados por el docente (con fecha de vigencia)
@@ -185,6 +187,7 @@ export function PlantProvider({ children }) {
       onSnapshot(semana('dias'), (s) => setDiasSemana(docsA(s)), fallo),
       onSnapshot(semana('bonos'), (s) => setBonosSemana(docsA(s)), fallo),
       onSnapshot(doc(db, 'premios', lunes), (s) => setPremioSemana(s.exists() ? s.data() : null), fallo),
+      onSnapshot(collection(db, 'grupos'), (s) => setGruposDocs(docsA(s)), fallo),
       onSnapshot(doc(db, 'config', 'pines'), (s) => setPinesRequeridos(s.exists() ? (s.data().requeridos ?? []).map(Number) : []), fallo),
       solo(esDocente, () => onSnapshot(collection(db, 'pines'), (s) => setPinesDocente(Object.fromEntries(s.docs.map((d) => [Number(d.id), d.data().pin]))), fallo)),
       onSnapshot(doc(db, 'config', 'edfisica'), (s) => setVersionesEF(s.exists() ? s.data().versiones ?? [] : []), fallo),
@@ -200,6 +203,7 @@ export function PlantProvider({ children }) {
 
   const jornada = useMemo(getJornada, [fecha]);
   const semana = lunesDe(fecha);
+  const gruposSemana = useMemo(() => gruposDocs.find((g) => g.semana === semana) ?? null, [gruposDocs, semana]);
   // Días con novedades + feriados nacionales (sin clase salvo que el docente diga "hay clase")
   const diasSemana = useMemo(() => aplicarFeriados(diasSemanaBruto, { desde: semana, hasta: sumarDias(semana, 6) }), [diasSemanaBruto, semana]);
   const diasTodos = useMemo(() => aplicarFeriados(diasTodosBruto), [diasTodosBruto]);
@@ -464,6 +468,23 @@ export function PlantProvider({ children }) {
     }
   };
 
+  // Docente: sortea los grupos de esta semana (o los vuelve a sortear: queda registrado cuántas veces). Se evita repetir grupos de las últimas semanas.
+  const sortearGruposSemana = async () => {
+    try {
+      const lideres = alumnosDe(semana).map((a) => ({ id: a.id, numero: a.numero }));
+      const previos = gruposDocs.filter((g) => g.semana < semana).sort((a, b) => a.semana.localeCompare(b.semana)).slice(-4);
+      const sorteo = sortearGrupos({ lideres, previos });
+      const motivo = validarGrupos(sorteo);
+      if (motivo) throw new Error(motivo);
+      await setDoc(doc(db, 'grupos', semana), { semana, creado: serverTimestamp(), intentos: (gruposSemana?.intentos ?? 0) + 1, ...sorteo });
+      setError('');
+      return true;
+    } catch (e) {
+      setError(e?.code ? mensajeError(e) : e.message);
+      return false;
+    }
+  };
+
   // Docente: carga o cambia el PIN de un líder (4 números). El PIN queda en pines/{id} (solo docentes) y el número del líder en config/pines.
   const guardarPin = async (id, pin) => {
     if (!TURNOS_IDS_LIDER.includes(id) || !/^\d{4}$/.test(pin)) return false;
@@ -618,6 +639,7 @@ export function PlantProvider({ children }) {
     semana, resumenSemana, premioSemana, historial, premios, publicarPremio, reiniciarPuntos,
     diaHoy, hoySinClase, suplentesHoy, jornadasSemana, bonosSemana, diasTodos, bonosTodos, sinClaseTodos, edFisicaTodos,
     sinClaseDe, tareasEn,
+    gruposDocs, gruposSemana, sortearGruposSemana,
     pinesRequeridos, pinesDocente, guardarPin, quitarPin,
     puntajes, corregirPuntos, versionesEF, diasEdFisicaHoy: diasEdFisicaEn(versionesEF, fecha), guardarDiasEdFisica, quitarVersionEdFisica,
     designarSuplente, marcarSinClase, marcarEdFisica, programarEdFisica, cargarBono, quitarBono,

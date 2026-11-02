@@ -7,7 +7,7 @@ import { etiquetaDia, hoyISO, lunesDe, sumarDias } from '../lib/semanas';
 import { btn, campo } from './estilos';
 
 const proximoLunes = () => sumarDias(lunesDe(hoyISO()), 7);
-const paraFormulario = (alumnos) => alumnos.map(({ id, nombre, dia, turno, avatar }) => ({ id, nombre, dia, turno, avatar }));
+const paraFormulario = (alumnos) => alumnos.map(({ id, nombre, dia, turno, avatar, numero }) => ({ id, nombre, dia, turno, avatar, numero }));
 const nombreEquipo = (turno) => TURNOS.find((t) => t.id === turno)?.nombre ?? turno;
 
 // Cambio de líderes sin tocar el código: se elige desde qué fecha rige y el historial conserva los nombres de cada fecha
@@ -57,13 +57,18 @@ export default function LideresEditor() {
         )}
         <div className="space-y-2">
           {items.map((x, i) => (
-            <div key={x.id} className="grid gap-2 grid-cols-1 sm:grid-cols-[9rem_8rem_1fr_11rem] items-center">
+            <div key={x.id} className="grid gap-2 grid-cols-1 sm:grid-cols-[9rem_8rem_5rem_1fr_11rem] items-center">
               <select value={x.dia} onChange={(e) => cambiar(i, 'dia', e.target.value)} aria-label={`Día del equipo ${nombreEquipo(x.turno)}`} className={campo}>
                 {DIAS_CLASE.map((d) => <option key={d}>{d}</option>)}
               </select>
               <select value={x.avatar ?? ''} onChange={(e) => cambiar(i, 'avatar', e.target.value)} aria-label={`Avatar del equipo ${nombreEquipo(x.turno)}`} className={campo}>
                 {AVATARES.map((a) => <option key={a.emoji} value={a.emoji}>{a.emoji} {a.nombre}</option>)}
               </select>
+              <input
+                type="number" min="1" max="24" inputMode="numeric" value={x.numero ?? ''} placeholder="N.º"
+                onChange={(e) => cambiar(i, 'numero', e.target.value === '' ? '' : Number(e.target.value))}
+                aria-label={`Número de lista del líder del equipo ${nombreEquipo(x.turno)}`} className={campo}
+              />
               <input
                 value={x.nombre} onChange={(e) => cambiar(i, 'nombre', e.target.value)} maxLength={40} placeholder="Apellido, N."
                 aria-label={`Líder del equipo ${nombreEquipo(x.turno)}`} className={campo}
@@ -87,7 +92,7 @@ export default function LideresEditor() {
           {cambios.map((v) => (
             <li key={v.desde} className="flex flex-wrap items-center gap-x-2">
               <b>Desde {etiquetaDia(v.desde)}:</b>
-              <span>{DIAS_CLASE.map((d) => v.items.find((x) => x.dia === d)).filter(Boolean).map((x) => `${x.avatar ? `${x.avatar} ` : ''}${x.dia.slice(0, 3)} ${x.nombre}`).join(' · ')}</span>
+              <span>{DIAS_CLASE.map((d) => v.items.find((x) => x.dia === d)).filter(Boolean).map((x) => `${x.avatar ? `${x.avatar} ` : ''}${x.dia.slice(0, 3)} ${x.nombre}${x.numero ? ` (n.º ${x.numero})` : ''}`).join(' · ')}</span>
               <button onClick={() => quitar(v)} className="underline text-alarma">Quitar</button>
             </li>
           ))}
