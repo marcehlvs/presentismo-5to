@@ -2,7 +2,6 @@ import { lazy, Suspense } from 'react';
 import { PlantProvider, usePlant } from './context/PlantContext';
 import Login from './components/Login';
 import Dashboard from './components/Dashboard';
-import AccesoDocente from './components/AccesoDocente';
 import Cargando from './components/Cargando';
 
 // Los paneles del docente y la pantalla del aula no los usan los alumnos: se descargan solo cuando hacen falta
@@ -68,7 +67,6 @@ function Pantalla() {
     <>
       {error && <ErrorBanner mensaje={error} />}
       <Login />
-      <AccesoDocente />
     </>
   );
 }

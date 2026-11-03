@@ -22,4 +22,9 @@ describe('grillas responsivas', () => {
     }
     expect(malas).toEqual([]);
   });
+
+  it('el acceso docente va en el flujo de la página: un elemento fijo al pie tapa la tarjeta en ventanas bajas', () => {
+    const texto = readFileSync(new URL('AccesoDocente.jsx', carpeta), 'utf8');
+    expect(texto).not.toMatch(/\bfixed\b/);
+  });
 });

@@ -6,7 +6,7 @@ Cada día un alumno es el **Jefe de Planta**. Marca lo que hizo, **el docente lo
 
 > La guía técnica para instalar y publicar la app está en [`README.md`](README.md). Este documento explica qué hace la app y cómo se usa en el día a día.
 
-**Versión 1.6.1** · Desarrollada por **Juan Marcelo Bejarano** · Historial completo de cambios en [`CHANGELOG.md`](CHANGELOG.md).
+**Versión 1.6.2** · Desarrollada por **Juan Marcelo Bejarano** · Historial completo de cambios en [`CHANGELOG.md`](CHANGELOG.md).
 
 ## Cómo está organizado el panel docente
 Arriba hay cinco solapas; siempre se abre la última que usaste.
@@ -19,7 +19,7 @@ Arriba hay cinco solapas; siempre se abre la última que usaste.
 | **Líderes** | Sorteo de los grupos de la semana, líderes (con avatar y número de lista) y PIN de cada líder. |
 | **Puntos** | Bonos, *Verificar puntos*, historial y exportación a Excel, y *Volver a cero*. |
 
-## Novedades de esta versión (1.1.0 a 1.6.1)
+## Novedades de esta versión (1.1.0 a 1.6.2)
 - **Puntos:** quitar una aprobación resta los puntos; la bandeja *Pendientes de días anteriores* permite aprobar hasta 21 días atrás; *Verificar puntos* compara la tabla con las jornadas y los bonos y corrige diferencias.
 - **Calendario:** los feriados nacionales ya vienen marcados como días sin clase (se puede habilitar clase en uno puntual); los días de Educación Física se cambian desde el panel con fecha de vigencia.
 - **Premio semanal:** un equipo sin ninguna jornada en la semana no compite.

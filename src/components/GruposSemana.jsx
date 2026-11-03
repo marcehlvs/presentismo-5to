@@ -45,7 +45,7 @@ export default function GruposSemana() {
     <section className="bg-white border-2 border-acero rounded-lg p-5">
       <h2 className="font-display text-3xl font-bold mb-1">Grupos de la semana</h2>
       <p className="text-sm text-acero/70 mb-3">
-        Semana del {etiquetaSemana(semana)} · {TOTAL_CURSO} alumnos. Cada líder tiene su grupo, por número de lista; nadie puede estar en dos. Si un grupo ya se sorteó en clase,
+        {etiquetaSemana(semana)} · {TOTAL_CURSO} alumnos. Cada líder tiene su grupo, por número de lista; nadie puede estar en dos. Si un grupo ya se sorteó en clase,
         escribí sus compañeros (sin el líder) y tocá «Guardar lo definido a mano»; después «Sortear los que faltan» reparte al azar a los demás (se evita repetir los grupos de las últimas semanas).
         Todos los alumnos ven los grupos en la tabla de posiciones. Se guardan solo números de lista.
       </p>

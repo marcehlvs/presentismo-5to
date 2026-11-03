@@ -1,8 +1,16 @@
 # Historial de versiones — Operación: Jefe de Planta
 
-Aplicación desarrollada por **Juan Marcelo Bejarano**. La versión actual es la **1.6.1** (1 de noviembre de 2026).
+Aplicación desarrollada por **Juan Marcelo Bejarano**. La versión actual es la **1.6.2** (3 de noviembre de 2026).
 
 Cada versión indica qué cambió para los docentes y si hubo que publicar las reglas de Firestore (`firebase deploy --only firestore:rules`; siempre antes que la app).
+
+## [1.6.2] — 3/11/2026
+**Para los docentes**
+- **Acceso docente:** el enlace (y el formulario de email y contraseña) ya no queda fijo sobre el borde inferior de la ventana: ahora va debajo de la tarjeta de inicio, así no tapa nada en pantallas bajas ni con zoom.
+- Pantalla de inicio más compacta (menos alto) para que entre completa en pantallas chicas.
+- Arreglos de texto: "Semana del Semana del…" en *Grupos de la semana* y el doble punto en "Hoy le toca a Ferrio, M..".
+
+**Técnico:** sin cambios en las reglas. Una prueba evita que el acceso docente vuelva a quedar fijo.
 
 ## [1.6.1] — 2/11/2026
 **Para los docentes**
