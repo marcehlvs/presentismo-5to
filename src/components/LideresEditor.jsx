@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { usePlant } from '../context/PlantContext';
 import { AVATARES } from '../data/avatares';
-import { TURNOS } from '../data/mockData';
+import { TOTAL_CURSO, TURNOS } from '../data/mockData';
 import { DIAS_CLASE, validarLideres } from '../lib/lideres';
 import { etiquetaDia, hoyISO, lunesDe, sumarDias } from '../lib/semanas';
 import { btn, campo } from './estilos';
@@ -65,7 +65,7 @@ export default function LideresEditor() {
                 {AVATARES.map((a) => <option key={a.emoji} value={a.emoji}>{a.emoji} {a.nombre}</option>)}
               </select>
               <input
-                type="number" min="1" max="24" inputMode="numeric" value={x.numero ?? ''} placeholder="N.º"
+                type="number" min="1" max={TOTAL_CURSO} inputMode="numeric" value={x.numero ?? ''} placeholder="N.º"
                 onChange={(e) => cambiar(i, 'numero', e.target.value === '' ? '' : Number(e.target.value))}
                 aria-label={`Número de lista del líder del equipo ${nombreEquipo(x.turno)}`} className={campo}
               />

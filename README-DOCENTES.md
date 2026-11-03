@@ -6,7 +6,7 @@ Cada día un alumno es el **Jefe de Planta**. Marca lo que hizo, **el docente lo
 
 > La guía técnica para instalar y publicar la app está en [`README.md`](README.md). Este documento explica qué hace la app y cómo se usa en el día a día.
 
-**Versión 1.6.0** · Desarrollada por **Juan Marcelo Bejarano** · Historial completo de cambios en [`CHANGELOG.md`](CHANGELOG.md).
+**Versión 1.6.1** · Desarrollada por **Juan Marcelo Bejarano** · Historial completo de cambios en [`CHANGELOG.md`](CHANGELOG.md).
 
 ## Cómo está organizado el panel docente
 Arriba hay cinco solapas; siempre se abre la última que usaste.
@@ -19,13 +19,13 @@ Arriba hay cinco solapas; siempre se abre la última que usaste.
 | **Líderes** | Sorteo de los grupos de la semana, líderes (con avatar y número de lista) y PIN de cada líder. |
 | **Puntos** | Bonos, *Verificar puntos*, historial y exportación a Excel, y *Volver a cero*. |
 
-## Novedades de esta versión (1.1.0 a 1.6.0)
+## Novedades de esta versión (1.1.0 a 1.6.1)
 - **Puntos:** quitar una aprobación resta los puntos; la bandeja *Pendientes de días anteriores* permite aprobar hasta 21 días atrás; *Verificar puntos* compara la tabla con las jornadas y los bonos y corrige diferencias.
 - **Calendario:** los feriados nacionales ya vienen marcados como días sin clase (se puede habilitar clase en uno puntual); los días de Educación Física se cambian desde el panel con fecha de vigencia.
 - **Premio semanal:** un equipo sin ninguna jornada en la semana no compite.
 - **Líderes:** cada Jefe de Planta tiene un **avatar** y, si querés, un **PIN de 4 números** para que nadie tome el turno de otro.
 - **Seguridad:** los alumnos solo pueden escribir jornadas de ayer, hoy o mañana.
-- **Grupos de la semana:** un sorteo por semana reparte a los 24 alumnos entre los 5 líderes (grupos de 5, 5, 5, 5 y 4). Se ve en la tabla de posiciones y en el modo pantalla, y el resumen semanal muestra a quién corresponde el beneficio del equipo ganador.
+- **Grupos de la semana:** cada líder tiene su grupo de la semana, por número de lista (25 alumnos: cinco grupos de 5). Se pueden definir a mano los que ya se sortearon en clase y sortear el resto. Se ve en la tabla de posiciones y en el modo pantalla, y el resumen semanal muestra a quién corresponde el beneficio del equipo ganador.
 - **Panel en solapas:** Hoy, Semana, Calendario, Líderes y Puntos, para ver menos información a la vez.
 - **Celular:** el panel docente y la pantalla del jefe se ajustan al ancho del teléfono (antes se cortaban a la derecha).
 - **Contraseña visible a pedido:** en el acceso docente y en el PIN hay un botón (ojito) para mostrar u ocultar lo que escribís.
@@ -166,7 +166,7 @@ Los nombres de los equipos, los puntos de cada bloque y el criterio para elegir 
 - **PIN por líder:** en *PIN de los líderes* cargás (o generás al azar) un PIN de 4 números por líder; vos lo ves, los alumnos no. Al tomar el mando de ese líder, el celular pide el PIN. Entregáselo al líder y, si hay suplente, al suplente. Si lo cambiás, el celular que ya había entrado tiene que escribir el nuevo. Los líderes sin PIN siguen entrando como siempre.
 
 ## Grupos de la semana y beneficio
-1. **El lunes** (o cuando quieras), en *Líderes* tocá **Sortear grupos de esta semana**. Se reparte a los 24 por número de lista: cada líder recibe 4 compañeros (uno recibe 3) y nadie se repite. Todos los alumnos pueden ver los grupos en la tabla de posiciones.
-2. Si hay que **volver a sortear** (por ejemplo, cambió un líder), se puede, pero queda a la vista cuántas veces se sorteó y a qué hora.
+1. En *Líderes > Grupos de la semana* ves a cada líder con su número de lista. Si algún grupo **ya se sorteó en clase**, escribí en su fila los números de lista de sus compañeros (sin el líder) y tocá **Guardar lo definido a mano**.
+2. Después tocá **Sortear los que faltan**: la app reparte al azar a los alumnos que todavía no tienen grupo, sin repetir y evitando los grupos de las últimas semanas. Todos los alumnos ven los grupos en la tabla de posiciones. **Volver a sortear todo** conserva lo definido a mano; cada cambio queda registrado con fecha, hora y cantidad.
 3. **El viernes**, en *Semana*, el resumen muestra el equipo ganador y los números de lista de su grupo. Con la casilla *Incluir también al segundo equipo* se suma el segundo puesto. Si hay empate, la app lo avisa y no propone beneficiarios.
 4. Antes de dar un beneficio ligado a la nota, conviene confirmar con la dirección que el reglamento de evaluación lo permite.

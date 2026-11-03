@@ -13,14 +13,14 @@ export const PUNTAJES_INICIALES = { e1: 0, e2: 0, e3: 0, e4: 0, e5: 0 };
 
 // Jefe de Planta de cada día de la semana
 // Cantidad de alumnos del curso: los números de lista van de 1 a TOTAL_CURSO. Cada líder tiene su número de lista (`numero`).
-export const TOTAL_CURSO = 24;
+export const TOTAL_CURSO = 25;
 
 export const ALUMNOS = [
-  { id: 1, nombre: 'Gonzalez, V.', dia: 'Lunes', turno: 'e1', avatar: '🦾', numero: 10 },
+  { id: 1, nombre: 'Gonzalez, V.', dia: 'Lunes', turno: 'e1', avatar: '🦾', numero: 9 },
   { id: 2, nombre: 'Ferrio, M.', dia: 'Martes', turno: 'e2', avatar: '🔧', numero: 6 },
-  { id: 3, nombre: 'Mascaros, M.', dia: 'Miércoles', turno: 'e3', avatar: '🚀', numero: 17 },
-  { id: 4, nombre: 'Godoy, U.', dia: 'Jueves', turno: 'e4', avatar: '⚙️', numero: 9 },
-  { id: 5, nombre: 'Toledo, D.', dia: 'Viernes', turno: 'e5', avatar: '🦺', numero: 23 },
+  { id: 3, nombre: 'Mascaros, M.', dia: 'Miércoles', turno: 'e3', avatar: '🚀', numero: 16 },
+  { id: 4, nombre: 'Godoy, U.', dia: 'Jueves', turno: 'e4', avatar: '⚙️', numero: 8 },
+  { id: 5, nombre: 'Toledo, D.', dia: 'Viernes', turno: 'e5', avatar: '🦺', numero: 22 },
 ];
 
 

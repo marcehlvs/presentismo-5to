@@ -1,7 +1,8 @@
 import { TOTAL_CURSO } from '../data/mockData';
 
-// Grupos de la semana: cada líder recibe al azar compañeros (por número de lista) y todos los alumnos quedan en un solo grupo.
-// Con 24 alumnos y 5 líderes quedan cuatro grupos de 5 (líder + 4) y uno de 4 (líder + 3). Se guardan solo números de lista.
+// Grupos de la semana: cada líder tiene un grupo de compañeros (por número de lista) y todos los alumnos quedan en algún grupo.
+// Un grupo puede definirse a mano (por ejemplo, uno ya sorteado en clase) o sortearse; el sorteo solo reparte a los alumnos que
+// todavía no tienen grupo. Se guardan solo números de lista.
 
 // Número al azar en [0, 1) con el generador del navegador (no Math.random)
 export const rngSeguro = () => crypto.getRandomValues(new Uint32Array(1))[0] / 2 ** 32;
@@ -31,44 +32,92 @@ export function repeticiones(grupos, lideres, previos) {
   return total;
 }
 
-// lideres: [{ id, numero }]. previos: sorteos de semanas anteriores ({ lideres, grupos }) para evitar repetir grupos.
+const esNumeroDeLista = (n, total) => Number.isInteger(n) && n >= 1 && n <= total;
+
+// "10, 5 8;1" -> { numeros: [10, 5, 8, 1], error: '' }
+export function parsearNumeros(texto, total = TOTAL_CURSO) {
+  const partes = String(texto ?? '').split(/[\s,;]+/).filter(Boolean);
+  const numeros = [];
+  for (const p of partes) {
+    const n = Number(p);
+    if (!/^\d+$/.test(p) || !esNumeroDeLista(n, total)) return { numeros: [], error: `“${p}” no es un número de lista (de 1 a ${total}).` };
+    numeros.push(n);
+  }
+  return { numeros, error: '' };
+}
+
+// lideres: [{ id, numero }].
+// fijos: { id: [compañeros] } grupos ya definidos (se respetan tal cual). previos: sorteos de semanas anteriores, para evitar repetirlos.
+// soloFijos: guarda solo los grupos fijos, sin sortear el resto.
 // Devuelve { lideres: { id: numero }, grupos: { id: [números] } } (las claves son texto, como se guardan en Firestore).
-export function sortearGrupos({ lideres, total = TOTAL_CURSO, previos = [], rng = rngSeguro, intentos = 300 }) {
+// Un líder puede figurar como compañero en el grupo de otro (si así se definió a mano); sigue teniendo el suyo.
+export function sortearGrupos({ lideres, total = TOTAL_CURSO, fijos = {}, soloFijos = false, previos = [], rng = rngSeguro, intentos = 300 }) {
   const numeros = lideres.map((l) => l.numero);
-  if (new Set(numeros).size !== numeros.length || numeros.some((n) => !Number.isInteger(n) || n < 1 || n > total)) {
+  if (new Set(numeros).size !== numeros.length || numeros.some((n) => !esNumeroDeLista(n, total))) {
     throw new Error('Los números de lista de los líderes no son válidos.');
   }
-  const resto = Array.from({ length: total }, (_, i) => i + 1).filter((n) => !numeros.includes(n));
-  const base = Math.floor(resto.length / lideres.length);
-  const conUnoMas = resto.length % lideres.length;
+  const ids = lideres.map((l) => String(l.id));
   const mapaLideres = Object.fromEntries(lideres.map((l) => [String(l.id), l.numero]));
 
+  const grupos = {};
+  const vistos = new Set();
+  for (const [id, miembros] of Object.entries(fijos)) {
+    if (!ids.includes(String(id))) continue;
+    const lista = [...new Set(miembros)].sort((a, b) => a - b);
+    for (const n of lista) {
+      if (!esNumeroDeLista(n, total)) throw new Error(`El n.º ${n} no es un número de lista.`);
+      if (n === mapaLideres[String(id)]) throw new Error(`El n.º ${n} es el líder de ese grupo: no puede ser su propio compañero.`);
+      if (vistos.has(n)) throw new Error(`El n.º ${n} está en más de un grupo.`);
+      vistos.add(n);
+    }
+    grupos[String(id)] = lista;
+  }
+  if (soloFijos) return { lideres: mapaLideres, grupos };
+
+  const faltan = ids.filter((id) => !(id in grupos));
+  const resto = Array.from({ length: total }, (_, i) => i + 1).filter((n) => !numeros.includes(n) && !vistos.has(n));
+  if (faltan.length === 0) {
+    if (resto.length) throw new Error(`Quedarían alumnos sin grupo: ${resto.join(', ')}.`);
+    return { lideres: mapaLideres, grupos };
+  }
+
+  const base = Math.floor(resto.length / faltan.length);
+  const conUnoMas = resto.length % faltan.length;
   let mejor = null;
   let mejorPuntaje = Infinity;
   for (let t = 0; t < intentos && mejorPuntaje > 0; t++) {
-    const orden = mezclar(lideres.map((l) => l.id), rng); // los primeros reciben un compañero más
+    const orden = mezclar(faltan, rng); // los primeros reciben un compañero más
     const mezcla = mezclar(resto, rng);
-    const grupos = {};
+    const sorteados = {};
     let pos = 0;
     orden.forEach((id, i) => {
       const n = base + (i < conUnoMas ? 1 : 0);
-      grupos[String(id)] = mezcla.slice(pos, pos + n).sort((a, b) => a - b);
+      sorteados[id] = mezcla.slice(pos, pos + n).sort((a, b) => a - b);
       pos += n;
     });
-    const puntaje = repeticiones(grupos, mapaLideres, previos);
-    if (puntaje < mejorPuntaje) { mejor = grupos; mejorPuntaje = puntaje; }
+    const puntaje = repeticiones(sorteados, mapaLideres, previos);
+    if (puntaje < mejorPuntaje) { mejor = sorteados; mejorPuntaje = puntaje; }
   }
-  return { lideres: mapaLideres, grupos: mejor };
+  return { lideres: mapaLideres, grupos: { ...grupos, ...mejor } };
 }
 
-// Devuelve un mensaje de error, o '' si el sorteo está bien: todos los alumnos en un solo grupo y grupos parejos
-export function validarGrupos({ lideres, grupos }, total = TOTAL_CURSO) {
+// Devuelve un mensaje de error, o '' si los grupos están bien: números válidos, ninguno repetido y,
+// si `completo`, todos los alumnos con grupo (los líderes tienen el suyo).
+export function validarGrupos({ lideres, grupos }, { total = TOTAL_CURSO, completo = true } = {}) {
   const numerosLideres = Object.values(lideres ?? {});
-  const miembros = Object.values(grupos ?? {}).flat();
-  const todos = [...numerosLideres, ...miembros].sort((a, b) => a - b);
-  if (todos.length !== total || todos.some((n, i) => n !== i + 1)) return 'Cada número de lista tiene que estar una sola vez.';
-  const tamanos = Object.values(grupos).map((g) => g.length);
-  if (Math.max(...tamanos) - Math.min(...tamanos) > 1) return 'Los grupos tienen que ser parejos (a lo sumo uno de diferencia).';
+  const vistos = new Set();
+  for (const [id, miembros] of Object.entries(grupos ?? {})) {
+    for (const n of miembros) {
+      if (!esNumeroDeLista(n, total)) return `El n.º ${n} no es un número de lista.`;
+      if (n === lideres?.[id]) return `El n.º ${n} es el líder de su propio grupo.`;
+      if (vistos.has(n)) return `El n.º ${n} está en más de un grupo.`;
+      vistos.add(n);
+    }
+  }
+  if (completo) {
+    const sinGrupo = Array.from({ length: total }, (_, i) => i + 1).filter((n) => !numerosLideres.includes(n) && !vistos.has(n));
+    if (sinGrupo.length) return `Hay alumnos sin grupo: ${sinGrupo.join(', ')}.`;
+  }
   return '';
 }
 
@@ -79,8 +128,20 @@ export function integrantes(sorteo, id) {
   return lider == null || !Array.isArray(miembros) ? null : { lider, miembros };
 }
 
-// "10 (líder) · 3 · 8 · 12 · 20", o '' si ese líder no tiene grupo sorteado
+// "10 (líder) · 3 · 8 · 12 · 20", o '' si ese líder no tiene grupo
 export function textoGrupo(sorteo, id) {
   const g = integrantes(sorteo, id);
   return g ? [`${g.lider} (líder)`, ...g.miembros].join(' · ') : '';
+}
+
+// Avisos (no bloquean) sobre grupos definidos a mano: líderes que quedarían en el grupo de otro
+export function avisosFijos(lideres, fijos) {
+  const avisos = [];
+  for (const [id, miembros] of Object.entries(fijos)) {
+    for (const n of miembros) {
+      const otro = lideres.find((l) => l.numero === n && String(l.id) !== String(id));
+      if (otro) avisos.push(`El n.º ${n} es líder (${otro.dia}) y quedaría también en el grupo del ${lideres.find((l) => String(l.id) === String(id))?.dia ?? 'otro líder'}.`);
+    }
+  }
+  return avisos;
 }

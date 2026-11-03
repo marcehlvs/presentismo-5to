@@ -1,8 +1,17 @@
 # Historial de versiones — Operación: Jefe de Planta
 
-Aplicación desarrollada por **Juan Marcelo Bejarano**. La versión actual es la **1.6.0** (1 de noviembre de 2026).
+Aplicación desarrollada por **Juan Marcelo Bejarano**. La versión actual es la **1.6.1** (1 de noviembre de 2026).
 
 Cada versión indica qué cambió para los docentes y si hubo que publicar las reglas de Firestore (`firebase deploy --only firestore:rules`; siempre antes que la app).
+
+## [1.6.1] — 2/11/2026
+**Para los docentes**
+- **El curso tiene 25 alumnos** (antes figuraban 24) y los números de lista de los líderes se corrigieron según la lista oficial: Gonzalez 9, Ferrio 6, Godoy 8, Mascaros 16 y Toledo 22. Con 25 alumnos los cinco grupos quedan de 5 (líder + 4). **Si cargaste los líderes desde el panel, revisá que sus números coincidan con esos** (en *Líderes de la semana*).
+- **Grupos definidos a mano.** En *Grupos de la semana* se puede escribir, para cada líder, los números de lista de sus compañeros (por ejemplo, grupos que ya se sortearon en clase) y guardarlos con *Guardar lo definido a mano*. Esos grupos se respetan y se muestran igual que los sorteados (con la etiqueta «definido a mano»). *Sortear los que faltan* reparte al azar solo a los alumnos que todavía no tienen grupo, y *Volver a sortear todo* conserva lo definido a mano.
+- Si un líder queda como compañero en el grupo de otro, la app avisa (queda en dos grupos), pero lo permite.
+- Cada cambio queda registrado con fecha, hora y cantidad de cambios.
+
+**Técnico:** las reglas de `grupos/{lunes}` aceptan el campo `manuales`. **Hay que publicar las reglas.**
 
 ## [1.6.0] — 2/11/2026
 **Para los docentes**

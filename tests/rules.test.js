@@ -149,7 +149,7 @@ describe('config (líderes y días de Ed. Física con fecha de vigencia)', () =>
 });
 
 describe('grupos de la semana', () => {
-  const sorteo = (intentos) => ({ semana: '2026-11-02', creado: serverTimestamp(), intentos, lideres: { 1: 10 }, grupos: { 1: [3, 4] } });
+  const sorteo = (intentos) => ({ semana: '2026-11-02', creado: serverTimestamp(), intentos, manuales: [], lideres: { 1: 10 }, grupos: { 1: [3, 4] } });
 
   it('el docente crea el sorteo con intentos 1 y cualquiera con sesión lo lee', async () => {
     await assertSucceeds(setDoc(doc(docente(), 'grupos', '2026-11-02'), sorteo(1)));
@@ -172,6 +172,8 @@ describe('grupos de la semana', () => {
     await assertFails(setDoc(doc(docente(), 'grupos', '2026-11-02'), sorteo(3)));
     await assertFails(setDoc(doc(docente(), 'grupos', '2026-11-09'), sorteo(1)));
     await assertFails(setDoc(doc(docente(), 'grupos', 'hola'), { ...sorteo(1), semana: 'hola' }));
+    const { manuales, ...sinManuales } = sorteo(1);
+    await assertFails(setDoc(doc(docente(), 'grupos', '2026-11-02'), sinManuales));
   });
 });
 

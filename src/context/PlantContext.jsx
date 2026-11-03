@@ -468,15 +468,25 @@ export function PlantProvider({ children }) {
     }
   };
 
-  // Docente: sortea los grupos de esta semana (o los vuelve a sortear: queda registrado cuántas veces). Se evita repetir grupos de las últimas semanas.
-  const sortearGruposSemana = async () => {
+  // Docente: guarda los grupos de esta semana. `manuales` = { id: [números] } (grupos definidos a mano, por ejemplo ya sorteados en clase).
+  // modo 'manuales': guarda solo lo definido a mano (los grupos sorteados antes se descartan, porque pueden chocar con lo nuevo).
+  // modo 'faltantes': respeta los grupos que ya existen y sortea los que faltan. modo 'todo': vuelve a sortear todo menos lo definido a mano.
+  // Cada cambio queda registrado (fecha, hora y cantidad de cambios).
+  const guardarGruposSemana = async ({ modo, manuales = {} }) => {
     try {
       const lideres = alumnosDe(semana).map((a) => ({ id: a.id, numero: a.numero }));
       const previos = gruposDocs.filter((g) => g.semana < semana).sort((a, b) => a.semana.localeCompare(b.semana)).slice(-4);
-      const sorteo = sortearGrupos({ lideres, previos });
-      const motivo = validarGrupos(sorteo);
+      const actual = gruposSemana;
+      const idsManuales = new Set([...(actual?.manuales ?? []).map(String), ...Object.keys(manuales)]);
+      const aMano = Object.fromEntries([...idsManuales].filter((id) => Array.isArray(manuales[id] ?? actual?.grupos?.[id])).map((id) => [id, manuales[id] ?? actual.grupos[id]]));
+      const fijos = modo === 'faltantes' ? { ...(actual?.grupos ?? {}), ...manuales } : aMano;
+      const sorteo = sortearGrupos({ lideres, fijos, previos, soloFijos: modo === 'manuales' });
+      const motivo = validarGrupos(sorteo, { completo: Object.keys(sorteo.grupos).length === lideres.length });
       if (motivo) throw new Error(motivo);
-      await setDoc(doc(db, 'grupos', semana), { semana, creado: serverTimestamp(), intentos: (gruposSemana?.intentos ?? 0) + 1, ...sorteo });
+      await setDoc(doc(db, 'grupos', semana), {
+        semana, creado: serverTimestamp(), intentos: (actual?.intentos ?? 0) + 1,
+        manuales: Object.keys(aMano).map(Number).sort((a, b) => a - b), ...sorteo,
+      });
       setError('');
       return true;
     } catch (e) {
@@ -639,7 +649,7 @@ export function PlantProvider({ children }) {
     semana, resumenSemana, premioSemana, historial, premios, publicarPremio, reiniciarPuntos,
     diaHoy, hoySinClase, suplentesHoy, jornadasSemana, bonosSemana, diasTodos, bonosTodos, sinClaseTodos, edFisicaTodos,
     sinClaseDe, tareasEn,
-    gruposDocs, gruposSemana, sortearGruposSemana,
+    gruposDocs, gruposSemana, guardarGruposSemana,
     pinesRequeridos, pinesDocente, guardarPin, quitarPin,
     puntajes, corregirPuntos, versionesEF, diasEdFisicaHoy: diasEdFisicaEn(versionesEF, fecha), guardarDiasEdFisica, quitarVersionEdFisica,
     designarSuplente, marcarSinClase, marcarEdFisica, programarEdFisica, cargarBono, quitarBono,

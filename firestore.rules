@@ -154,22 +154,25 @@ service cloud.firestore {
     }
 
     // Sorteo de grupos de la semana (el id es el lunes de esa semana): lo ve cualquiera con sesión y lo hace el docente.
-    // Al crearlo vale intentos = 1 y cada nuevo sorteo de la misma semana suma exactamente 1: se ve cuántas veces se sorteó.
+    // Al crearlo vale intentos = 1 y cada cambio de la misma semana suma exactamente 1: se ve cuántas veces se tocó.
+    // `manuales` son los líderes cuyo grupo se definió a mano.
     match /grupos/{semana} {
       allow read: if signedIn();
       allow create: if esDocente()
         && semana.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
-        && request.resource.data.keys().hasOnly(['semana', 'creado', 'intentos', 'lideres', 'grupos'])
+        && request.resource.data.keys().hasOnly(['semana', 'creado', 'intentos', 'manuales', 'lideres', 'grupos'])
         && request.resource.data.semana == semana
         && request.resource.data.creado == request.time
         && request.resource.data.intentos == 1
+        && request.resource.data.manuales is list
         && request.resource.data.lideres is map
         && request.resource.data.grupos is map;
       allow update: if esDocente()
-        && request.resource.data.keys().hasOnly(['semana', 'creado', 'intentos', 'lideres', 'grupos'])
+        && request.resource.data.keys().hasOnly(['semana', 'creado', 'intentos', 'manuales', 'lideres', 'grupos'])
         && request.resource.data.semana == semana
         && request.resource.data.creado == request.time
         && request.resource.data.intentos == resource.data.intentos + 1
+        && request.resource.data.manuales is list
         && request.resource.data.lideres is map
         && request.resource.data.grupos is map;
       allow delete: if esDocente();
