@@ -145,7 +145,7 @@ export default function DiasEspeciales() {
           <h3 className="font-display text-xl font-bold">Educación Física</h3>
           <p className="text-sm text-acero/70">
             Se hace fuera del aula y tiene su propio checklist, que le toca al líder del día. Aparece solo {textoDiasEdFisica(diasEdFisicaHoy)} (se cambia en «Días de Educación Física»); acá podés quitarla un día puntual (lluvia, feriado, profe ausente) o sumar otro día. Suma {puntosEdFisica} puntos al equipo cuando se aprueba todo.
-            Los puntos de ese día no le dan ventaja a ningún equipo: el promedio de la semana se calcula sobre los puntos posibles.
+            Ese día se sortea qué equipo hace la Ed. Física (rotación: no repite hasta que salieron los cinco) y su equipo suma esos puntos al promedio.
           </p>
           <div className="flex flex-wrap items-center gap-2">
             {edFisica ? (

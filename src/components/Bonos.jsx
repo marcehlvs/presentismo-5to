@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react';
 import { usePlant } from '../context/PlantContext';
 import { ALUMNOS, TURNOS } from '../data/mockData';
-import { BONOS_SUGERIDOS, BONO_MAXIMO, etiquetaDia } from '../lib/semanas';
+import { BONOS_SUGERIDOS, BONO_MAXIMO, equiposCalificados, etiquetaDia } from '../lib/semanas';
 import { btn, campo } from './estilos';
+import { useConfirmar } from './Confirmar';
 
 const nombreEquipo = (id) => TURNOS.find((t) => t.id === id)?.nombre ?? id;
 const momento = (b) => b.creado?.toMillis?.() ?? Number.MAX_SAFE_INTEGER; // recién creado: todavía sin hora del servidor
@@ -12,6 +13,8 @@ export default function Bonos() {
   const { fecha, cargarBono, quitarBono, bonosTodos, jornadasSemana, sinClaseTodos } = usePlant();
   const [f, setF] = useState({ turnoId: '', puntos: '', motivo: '', fecha });
   const [estado, setEstado] = useState('');
+  const [confirmar, dialogo] = useConfirmar();
+  const calificados = useMemo(() => equiposCalificados(jornadasSemana, sinClaseTodos), [jornadasSemana, sinClaseTodos]);
   const cambiar = (campoNombre, valor) => { setF((p) => ({ ...p, [campoNombre]: valor })); setEstado(''); };
 
   const puntos = Number(f.puntos);
@@ -40,19 +43,23 @@ export default function Bonos() {
     }
   };
 
-  const quitar = (b) => {
-    if (window.confirm(`¿Quitar el bono de +${b.puntos} para ${nombreEquipo(b.turnoId)}? Se restan esos puntos.`)) quitarBono(b);
+  const quitar = async (b) => {
+    if (await confirmar(`¿Quitar el bono de +${b.puntos} para ${nombreEquipo(b.turnoId)}? Se restan esos puntos.`, { aceptar: 'Quitar bono', peligro: true })) quitarBono(b);
   };
 
   return (
     <section className="bg-white border-2 border-acero rounded-lg p-5">
       <h2 className="font-display text-3xl font-bold mb-1">Bonos</h2>
-      <p className="text-sm text-acero/70 mb-3">Puntos extra para un equipo. Suman a la tabla de posiciones y al ranking de la semana de la fecha elegida.</p>
+      <p className="text-sm text-acero/70 mb-3">Puntos extra para el equipo que vos elijas. Suman a la tabla de posiciones acumulada, pero no cuentan para decidir el ganador de la semana (eso se define por el promedio de las jornadas).</p>
 
       <div className="flex flex-wrap gap-2 mb-3">
         {BONOS_SUGERIDOS.map((b) => (
-          <button key={b.motivo} type="button" onClick={() => setF((p) => ({ ...p, motivo: b.motivo, puntos: String(b.puntos) }))} className={btn}>
+          <button
+            key={b.motivo} type="button" className={btn}
+            onClick={() => setF((p) => ({ ...p, motivo: b.motivo, puntos: String(b.puntos), turnoId: p.turnoId || (calificados[b.id]?.length === 1 ? calificados[b.id][0] : '') }))}
+          >
             {b.motivo} (+{b.puntos})
+            {calificados[b.id]?.length > 0 && <span className="block text-xs font-normal">Califican esta semana: {calificados[b.id].map(nombreEquipo).join(', ')}</span>}
           </button>
         ))}
       </div>
@@ -101,6 +108,7 @@ export default function Bonos() {
           ))}
         </ul>
       )}
+      {dialogo}
     </section>
   );
 }

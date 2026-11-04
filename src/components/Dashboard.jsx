@@ -8,9 +8,10 @@ import QualityControl from './QualityControl';
 import Leaderboard from './Leaderboard';
 import PremioSemana from './PremioSemana';
 import AvisoSinClase from './AvisoSinClase';
+import PuntosDelDia from './PuntosDelDia';
 
 export default function Dashboard() {
-  const { jefe, jornada, plantaOperativa, plantaCerrada, cerrarTurno, suplenteHoy, hoyEdFisica } = usePlant();
+  const { jefe, jornada, plantaOperativa, plantaCerrada, cerrarTurno, suplenteHoy, hoyEdFisica, edFisicaMia, nuevoModelo, extras, extrasPagasHoy, maxExtras, puntosExtra, sorteoHoy, alumnos, puntosEdFisica } = usePlant();
   const equipo = equipoDe(jefe);
 
   return (
@@ -61,15 +62,29 @@ export default function Dashboard() {
         <div className="space-y-6">
           <Checklist momento="apertura" titulo="Checklist matutino" />
           <QualityControl />
-          {hoyEdFisica && (
+          {edFisicaMia && (
             <Checklist
               momento="edfisica" titulo="Educación Física"
-              ayuda="Hoy hay Ed. Física, fuera del aula. Marcá cada paso a medida que lo hacés; el docente lo aprueba."
+              ayuda={`Hoy hay Ed. Física, fuera del aula, y les tocó a ustedes: suman ${puntosEdFisica} puntos. Marcá cada paso a medida que lo hacés; el docente lo aprueba.`}
             />
           )}
+          {hoyEdFisica && !edFisicaMia && nuevoModelo && (
+            <p role="status" className="bg-white border-2 border-acero rounded-lg p-4 font-semibold">
+              {sorteoHoy
+                ? `Hoy la Educación Física la hace el equipo de ${alumnos.find((a) => a.id === sorteoHoy.jefeId)?.nombre ?? 'otro líder'}. Ustedes pueden sumar con las tareas extra.`
+                : 'Hoy hay Educación Física: el docente sortea qué equipo la hace. Mientras tanto, ¡sumen con las tareas extra!'}
+            </p>
+          )}
           <Checklist momento="cierre" titulo="Cierre de planta" />
+          {nuevoModelo && extras.length > 0 && (
+            <Checklist
+              momento="extra" titulo="Tareas extra"
+              ayuda={`Son opcionales: cada una aprobada suma +${puntosExtra} (hasta ${maxExtras} por día). Llevan ${extrasPagasHoy} de ${maxExtras}.`}
+            />
+          )}
         </div>
         <div className="space-y-6">
+          <PuntosDelDia />
           <Leaderboard />
           <PremioSemana />
         </div>

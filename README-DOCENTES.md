@@ -48,15 +48,15 @@ Arriba hay cinco solapas; siempre se abre la última que usaste.
 | **Educación Física** *(solo los días que haya)* | Sigue su checklist propio (ver más abajo) | 10 |
 | **Cierre de planta** | Aula limpia y ordenada, pizarra y equipos apagados, luces apagadas y puerta cerrada | 10 |
 
-Una jornada común suma hasta **35 puntos**; un día con Ed. Física, hasta **45**.
+Una jornada común suma hasta **35 puntos** (abrir la planta 10 + desafío 15 + cerrar la planta 10). Si al equipo le toca Ed. Física suma **10 más**, y puede sumar **5 por cada tarea extra** (hasta 3 por día). Los alumnos lo ven día por día en la tarjeta *Puntos de hoy*. *(Rige desde el 4/11/2026; antes, ver CHANGELOG.)*
 
 ---
 
 ## Educación Física
 
-Ed. Física se hace fuera del aula, así que tiene **su propio checklist**, separado del matutino y del cierre. Aparece **automáticamente los lunes y viernes**, y el docente puede quitarla o sumarla en días puntuales.
+Ed. Física se hace fuera del aula, así que tiene **su propio checklist**, separado del matutino y del cierre. Aparece **automáticamente los lunes y viernes**, y el docente puede quitarla o sumarla en días puntuales. **Desde el 4/11 la hace un solo equipo por día, sorteado** (ver abajo).
 
-**Checklist de Ed. Física** (lo completa el Jefe de Planta del día):
+**Checklist de Ed. Física** (lo completa el líder del equipo sorteado):
 
 1. Salida ordenada: aula cerrada, cosas guardadas y el curso en fila hacia el patio o gimnasio.
 2. Ropa y calzado deportivo: avisar al profe quiénes no trajeron el equipo (solo cantidades).
@@ -70,8 +70,9 @@ Ed. Física se hace fuera del aula, así que tiene **su propio checklist**, sepa
 - **Qué días hay:** por defecto los **lunes y viernes**, desde el 30/10/2026 (las jornadas anteriores no cambian). Para cambiarlos usá la sección *Días de Educación Física* del panel: marcás los días de la semana y desde qué fecha rigen; lo anterior queda como estaba. No hace falta cargar fechas. En *Suplentes, días sin clase y Ed. Física* se puede **quitar un día puntual** (lluvia, feriado, ausencia del profe) o **sumar otro día**, solo o repetido ("todos los miércoles hasta tal fecha"). Los días sin clase nunca tienen Ed. Física.
 - **Quién la aprueba:** cualquier docente con acceso al panel, en el bloque *Educación Física* de cada líder, o la **cuenta de Ed. Física**, que ve un panel reducido con solo ese bloque (ver *Cuentas y permisos*).
 - **Puntos:** 10 al equipo cuando se aprueba todo.
-- **Sin ventaja para nadie:** el equipo al que le toca un día con Ed. Física tiene más puntos posibles. Para que no se favorezca, el ranking semanal compara **puntos sobre puntos posibles** (se muestra como "puntos por jornada común", hasta 35).
-- **Tareas propias:** el docente puede agregar tareas extra y asignarlas al momento *Educación Física*; solo aparecen ese día. Esas tareas extra las aprueba el docente completo, no la cuenta de Ed. Física.
+- **Sorteo con rotación:** los días de Ed. Física, en *Hoy* aparece *Educación Física de hoy*. Con *Sortear* sale un líder y su equipo suma +10 al completar el checklist. No se repite hasta que salieron los cinco; después empieza otra ronda. Se puede **cambiar a mano** (si el sorteado faltó) o **deshacer**. Los demás equipos ven quién la hace y compensan con tareas extra.
+- **El promedio no se normaliza:** el ganador de la semana sale de los puntos de las jornadas ÷ jornadas; la Ed. Física sorteada y las extras suman de verdad. Como la Ed. Física rota, la ventaja se reparte.
+- **Quién la ve y la aprueba:** la cuenta de Ed. Física ve solo al equipo sorteado.
 - **Aviso visible:** los días con Ed. Física, la pantalla del aula muestra "Hoy hay Educación Física".
 
 ---
@@ -85,9 +86,10 @@ Se entra desde *Acceso docente* con correo y contraseña. El panel permite:
 - **Pendientes de días anteriores:** arriba del panel aparece una bandeja con lo que quedó sin revisar en los últimos 21 días, para aprobarlo aunque haya pasado el día.
   - **Tarea que el alumno no marcó:** también se puede rechazar, siempre que se escriba un comentario que explique qué falta. El alumno lo ve en su checklist.
 - **Publicar el desafío del día:** materia, enunciado, pista opcional (aparece solo si se rechaza una respuesta) y un criterio de corrección que **los alumnos no ven**.
-- **Agregar hasta 5 tareas extra por día**, al checklist matutino, a Ed. Física o al cierre. Cada una puede tener hasta **200 caracteres**, así caben preguntas completas.
+- **Agregar hasta 5 tareas extra por día.** Son **opcionales**: cada una aprobada suma **+5** (hasta 3 por día), no frena el premio del checklist y no hay que elegir momento. Cada una puede tener hasta **200 caracteres**. Incentivalas para que los equipos compensen los días en que no les tocó Ed. Física.
 - **Cargar el premio de la semana**, que ven los alumnos junto al ranking.
-- **Otorgar bonos** de 1 a 100 puntos a un equipo, con motivo y fecha (por ejemplo "Semana perfecta" o "Cero llegadas tarde"). Un bono cargado por error se puede quitar.
+- **Otorgar bonos** de 1 a 100 puntos al equipo que elijas, con motivo y fecha. Los botones *Semana perfecta* (+20) y *Cero llegadas tarde* (+10) muestran qué equipos califican esa semana. Los bonos suman a la tabla acumulada pero **no cuentan para el ganador de la semana**. Un bono cargado por error se puede quitar.
+- **Últimos movimientos** (solapa *Puntos*): registro de cada cambio del contador (equipo, cantidad, motivo, jornada). Si un total no cierra, se ve de dónde vino.
 - **Gestionar situaciones del día a día:**
   - **Suplente:** si el líder falta, se escribe quién lo reemplaza. Los puntos van igual al equipo del líder.
   - **Día sin clase:** ese día no se inicia turno, no se aprueban tareas y no cuenta para el promedio, así un feriado no perjudica a nadie. Los **feriados nacionales** ya vienen marcados solos; si en uno sí hay clase, elegí la fecha y tocá *Hay clase este día*. Los días no laborables y los puentes no vienen cargados: se marcan a mano.
@@ -97,7 +99,7 @@ Se entra desde *Acceso docente* con correo y contraseña. El panel permite:
 
 ## Seguimiento y reportes
 
-- **Ranking en tiempo real** para alumnos y docentes, con el premio de la semana a la vista. La *Tabla de posiciones* suma los puntos acumulados (los días con Ed. Física pueden sumar 10 más); el *ganador de la semana* se define aparte, por puntos por jornada común, para que nadie tenga ventaja por el día que le toca.
+- **Ranking en tiempo real** para alumnos y docentes, con el premio de la semana a la vista. La *Tabla de posiciones* suma los puntos acumulados (con bonos); el *ganador de la semana* se define aparte, por el promedio de puntos por jornada (sin bonos). La semana en curso dice *Va ganando*.
 - **Evolución semanal** por equipo (promedio, puntos de la semana o acumulado).
 - **Resumen semanal para imprimir:** posiciones, detalle por día, asistencia, bonos y días sin clase, en una hoja A4 lista para imprimir o guardar como PDF.
 - **Exportar a planilla (.xlsx)** con las hojas *Jornadas*, *Semanas*, *Bonos* y *Días especiales*.
@@ -113,7 +115,7 @@ Hay tres tipos de cuenta docente. Todas se dan de alta a mano en Firebase (Authe
 | Cuenta | Cómo se crea | Qué puede hacer |
 |---|---|---|
 | **Docente** | Documento `docentes/{UID}` sin más campos | Todo el panel: aprobar, desafío, tareas extra, bonos, premios, suplentes, días especiales, líderes, reportes |
-| **Docente de Ed. Física** | `docentes/{UID}` con `rol` = `edfisica` | Solo ve y aprueba o rechaza el bloque de Ed. Física del líder del día. No ve el resto del panel. Solo puede sumar los 10 puntos de Ed. Física |
+| **Docente de Ed. Física** | `docentes/{UID}` con `rol` = `edfisica` | Solo ve y aprueba o rechaza el bloque de Ed. Física del equipo sorteado. No ve el resto del panel. Solo puede sumar los 10 puntos de Ed. Física |
 | **Superadmin** | `docentes/{UID}` con `rol` = `superadmin` | Todo lo del docente, y además es la única cuenta que ve **Volver a cero** |
 
 Los permisos los hacen cumplir las reglas de la base de datos, no solo la pantalla. Una excepción: los puntos de los equipos se protegen del reinicio solo en la pantalla.

@@ -2,11 +2,13 @@ import { useMemo, useState } from 'react';
 import { usePlant } from '../context/PlantContext';
 import { compararPuntos, hayDescuadre } from '../lib/verificarPuntos';
 import { btn } from './estilos';
+import { useConfirmar } from './Confirmar';
 
 // Compara el contador de puntos de cada equipo (lo que ven los alumnos en la tabla) con el total calculado desde las jornadas y los bonos
 export default function VerificarPuntos() {
   const { historial, bonosTodos, puntajes, corregirPuntos } = usePlant();
   const [estado, setEstado] = useState('');
+  const [confirmar, dialogo] = useConfirmar();
   const filas = useMemo(() => compararPuntos({ jornadas: historial, bonos: bonosTodos, puntajes }), [historial, bonosTodos, puntajes]);
   const descuadre = hayDescuadre(filas);
 
@@ -14,7 +16,7 @@ export default function VerificarPuntos() {
     const msg = lista.length === 1
       ? `¿Dejar el contador de ${lista[0].nombre} en ${lista[0].calculado} puntos (hoy tiene ${lista[0].contador})?`
       : `¿Corregir el contador de ${lista.length} equipos con el total calculado desde las jornadas y los bonos?`;
-    if (!window.confirm(msg)) return;
+    if (!(await confirmar(msg, { aceptar: 'Corregir' }))) return;
     setEstado('guardando');
     const resultados = await Promise.all(lista.map((f) => corregirPuntos(f.id, f.calculado)));
     setEstado(resultados.every(Boolean) ? 'ok' : '');
@@ -55,6 +57,7 @@ export default function VerificarPuntos() {
         <p role="status" className="mt-3 text-sm font-semibold text-operativa">Los puntos coinciden en los cinco equipos ✓</p>
       )}
       {estado === 'ok' && <p role="status" className="mt-2 text-operativa font-semibold">Corregido ✓</p>}
+      {dialogo}
     </section>
   );
 }

@@ -7,9 +7,11 @@ import AvisoSinClase from './AvisoSinClase';
 // Panel de la cuenta docente de Ed. Física (docentes/{uid} con rol = 'edfisica'): solo ve y aprueba el bloque de Ed. Física
 // de cada líder. No publica desafíos, no carga bonos ni toca el resto del panel.
 export default function PanelEdFisica() {
-  const { jornadasHoy, alumnos, tareas, logoutDocente, jornada, error, hoyEdFisica, suplentesHoy, puntosEdFisica, diasEdFisicaHoy } = usePlant();
+  const { jornadasHoy, alumnos, tareasEn, fecha, logoutDocente, jornada, error, hoyEdFisica, suplentesHoy, puntosEdFisica, diasEdFisicaHoy, nuevoModelo, jefeEFHoy } = usePlant();
+  // Con el sorteo, solo el líder sorteado hace Ed. Física; antes, el de cada jornada del día
+  const jornadasEF = nuevoModelo ? jornadasHoy.filter((j) => j.jefeId === jefeEFHoy) : jornadasHoy;
   // Solo las tareas propias de Ed. Física (las que agrega el docente general no se aprueban desde acá)
-  const tareasEF = tareas.filter((t) => t.momento === 'edfisica' && t.id.startsWith('ef_'));
+  const tareasEFde = (j) => tareasEn(fecha, j.jefeId).filter((t) => t.momento === 'edfisica' && t.id.startsWith('ef_'));
 
   return (
     <div className="min-h-screen">
@@ -29,10 +31,12 @@ export default function PanelEdFisica() {
         <AvisoSinClase />
         {!hoyEdFisica ? (
           <p className="bg-white border-2 border-acero rounded-lg p-5">Hoy no hay Educación Física. Aparece sola {textoDiasEdFisica(diasEdFisicaHoy)}.</p>
-        ) : jornadasHoy.length === 0 ? (
-          <p className="bg-white border-2 border-acero rounded-lg p-5">Todavía no hay actividad del líder de hoy.</p>
+        ) : nuevoModelo && jefeEFHoy == null ? (
+          <p className="bg-white border-2 border-acero rounded-lg p-5">Hoy hay Educación Física, pero el docente todavía no sorteó qué equipo la hace.</p>
+        ) : jornadasEF.length === 0 ? (
+          <p className="bg-white border-2 border-acero rounded-lg p-5">Todavía no hay actividad del equipo que hace hoy Educación Física.</p>
         ) : (
-          jornadasHoy.map((j) => {
+          jornadasEF.map((j) => {
             const alumno = alumnos.find((a) => a.id === j.jefeId);
             const suplente = suplentesHoy[String(j.jefeId)];
             return (
@@ -43,7 +47,7 @@ export default function PanelEdFisica() {
                 </h2>
                 <h3 className="font-display text-xl font-bold mb-2">{MOMENTOS.edfisica}</h3>
                 <ul className="space-y-2">
-                  {tareasEF.map((t) => <FilaTareaDocente key={t.id} j={j} t={t} />)}
+                  {tareasEFde(j).map((t) => <FilaTareaDocente key={t.id} j={j} t={t} />)}
                 </ul>
                 {j.premioEdFisica && <p className="mt-2 text-sm text-operativa font-semibold">Educación Física completa: {puntosEdFisica} puntos ya sumados al equipo.</p>}
               </section>

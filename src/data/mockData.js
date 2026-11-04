@@ -46,7 +46,7 @@ export const TAREAS_EDFISICA = [
   { id: 'ef_regreso', momento: 'edfisica', titulo: 'Regreso ordenado al aula', detalle: 'Volver en fila y sin correr, con el aula abierta y en orden', icono: 'Footprints' },
 ];
 
-export const MOMENTOS = { apertura: 'Checklist matutino', edfisica: 'Educación Física', cierre: 'Cierre de planta' };
+export const MOMENTOS = { apertura: 'Checklist matutino', edfisica: 'Educación Física', cierre: 'Cierre de planta', extra: 'Tareas extra (opcionales)' };
 
 // Ranuras para las tareas que agrega el docente cada día (máximo 5)
 export const IDS_EXTRA = ['x1', 'x2', 'x3', 'x4', 'x5'];

@@ -13,7 +13,7 @@ export default function Pendientes() {
   const lista = historial
     .filter((j) => j.fecha < fecha && j.fecha >= desde && !sinClaseDe(j.fecha))
     .sort((a, b) => b.fecha.localeCompare(a.fecha) || a.jefeId - b.jefeId)
-    .map((j) => ({ j, p: pendientesDe(j, tareasEn(j.fecha)) }))
+    .map((j) => ({ j, p: pendientesDe(j, tareasEn(j.fecha, j.jefeId)) }))
     .filter((x) => x.p.hay);
 
   if (lista.length === 0) return null;

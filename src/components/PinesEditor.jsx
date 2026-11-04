@@ -2,12 +2,14 @@ import { useState } from 'react';
 import { usePlant } from '../context/PlantContext';
 import { equipoDe } from '../data/mockData';
 import { btn, campo } from './estilos';
+import { useConfirmar } from './Confirmar';
 import Avatar from './Avatar';
 
 const pinAlAzar = () => String(Math.floor(Math.random() * 9000) + 1000);
 
 function FilaPin({ lider }) {
   const { pinesDocente, guardarPin, quitarPin } = usePlant();
+  const [confirmar, dialogo] = useConfirmar();
   const actual = pinesDocente[lider.id] ?? '';
   const [valor, setValor] = useState('');
   const [estado, setEstado] = useState('');
@@ -19,7 +21,7 @@ function FilaPin({ lider }) {
     if (ok) setValor('');
   };
   const quitar = async () => {
-    if (window.confirm(`¿Quitar el PIN de ${lider.nombre}? Cualquiera podría entrar como ese líder.`)) await quitarPin(lider.id);
+    if (await confirmar(`¿Quitar el PIN de ${lider.nombre}? Cualquiera podría entrar como ese líder.`, { aceptar: 'Quitar PIN', peligro: true })) await quitarPin(lider.id);
   };
 
   return (
@@ -39,6 +41,7 @@ function FilaPin({ lider }) {
         {actual && <button type="button" onClick={quitar} className="underline text-alarma text-sm">Quitar</button>}
         {estado === 'ok' && <span role="status" className="text-operativa font-semibold text-sm">Guardado ✓</span>}
       </div>
+      {dialogo}
     </li>
   );
 }

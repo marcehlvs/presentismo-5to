@@ -4,12 +4,15 @@ import { Printer } from 'lucide-react';
 import { usePlant } from '../context/PlantContext';
 import { TURNOS } from '../data/mockData';
 import { textoGrupo } from '../lib/grupos';
-import { CRITERIO_GANADOR, etiquetaDia, etiquetaSemana, lunesDe, puntosDeJornada, resumenTurnos, sumarDias } from '../lib/semanas';
+import { CRITERIO_GANADOR, etiquetaDia, etiquetaSemana, lunesDe, puntosDeJornada, resumenTurnos, sumarDias, extrasPagas, PUNTOS_EXTRA } from '../lib/semanas';
 import { btn, campo } from './estilos';
 
 const fechaLarga = (iso) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}`;
 const th = 'border border-black/50 bg-black/5 px-2 py-1 text-left font-semibold';
 const td = 'border border-black/40 px-2 py-1 tabular-nums';
+
+// ¿El equipo empezó el checklist de Ed. Física? (con el sorteo, solo el equipo sorteado lo hace)
+const intentoEF = (j) => Object.keys(j.declaradas ?? {}).some((k) => k.startsWith('ef_'));
 
 // La hoja que se imprime: en blanco y negro, pensada para A4
 export function HojaResumen({ d, alumnosEn }) {
@@ -52,7 +55,7 @@ export function HojaResumen({ d, alumnosEn }) {
         </tbody>
       </table>
       <p className="mt-1 text-xs">
-        {CRITERIO_GANADOR === 'promedio' ? 'Gana el equipo con más puntos por jornada' : 'Gana el equipo con más puntos'} (los puntos incluyen los bonos). Los días sin clase no cuentan, y un equipo sin ninguna jornada en la semana no compite por el premio.
+        {CRITERIO_GANADOR === 'promedio' ? 'Gana el equipo con más puntos por jornada' : 'Gana el equipo con más puntos'} (sin contar los bonos, que suman a la tabla acumulada pero no deciden el premio). Los días sin clase y las jornadas vacías no cuentan, y un equipo sin ninguna jornada en la semana no compite por el premio.
       </p>
 
       <p className="mt-4 font-display text-xl font-bold">Detalle por día</p>
@@ -60,11 +63,11 @@ export function HojaResumen({ d, alumnosEn }) {
         <thead>
           <tr>
             <th className={th}>Día</th><th className={th}>Líder</th><th className={th}>Matutino</th><th className={th}>Desafío</th>
-            <th className={th}>Ed. Física</th><th className={th}>Cierre</th><th className={th}>Puntos</th><th className={th}>Presentes</th><th className={th}>Tarde</th>
+            <th className={th}>Ed. Física</th><th className={th}>Cierre</th><th className={th}>Extras</th><th className={th}>Puntos</th><th className={th}>Presentes</th><th className={th}>Tarde</th>
           </tr>
         </thead>
         <tbody>
-          {jornadas.length === 0 && <tr><td className={td} colSpan={9}>No hay jornadas registradas esta semana.</td></tr>}
+          {jornadas.length === 0 && <tr><td className={td} colSpan={10}>No hay jornadas registradas esta semana.</td></tr>}
           {jornadas.map((j) => {
             const suplente = dias.find((x) => x.fecha === j.fecha)?.suplentes?.[String(j.jefeId)];
             const sin = sinClase.has(j.fecha);
@@ -75,8 +78,9 @@ export function HojaResumen({ d, alumnosEn }) {
                 <td className={td}>{alumnosEn(j.fecha).find((a) => a.id === j.jefeId)?.nombre ?? `Jefe ${j.jefeId}`}{suplente ? ` (suplente: ${suplente})` : ''}</td>
                 <td className={td}>{sn(j.premioChecklist)}</td>
                 <td className={td}>{sn(j.desafioAprobado)}</td>
-                <td className={td}>{sin || !edFisica.has(j.fecha) ? '–' : j.premioEdFisica ? 'Sí' : 'No'}</td>
+                <td className={td}>{sin || !edFisica.has(j.fecha) ? '–' : j.premioEdFisica ? 'Sí' : intentoEF(j) ? 'No' : '–'}</td>
                 <td className={td}>{sn(j.premioCierre)}</td>
+                <td className={td}>{sin ? '–' : extrasPagas(j) > 0 ? `+${extrasPagas(j) * PUNTOS_EXTRA}` : '–'}</td>
                 <td className={td}>{sin ? 'sin clase' : puntosDeJornada(j)}</td>
                 <td className={td}>{j.asistencia?.presentes ?? '–'}</td>
                 <td className={td}>{j.asistencia?.tardes ?? '–'}</td>
@@ -85,7 +89,7 @@ export function HojaResumen({ d, alumnosEn }) {
           })}
         </tbody>
       </table>
-      <p className="mt-1 text-xs">“–” significa que ese día no corresponde (sin clase o sin Ed. Física).</p>
+      <p className="mt-1 text-xs">“–” significa que ese día no corresponde (sin clase, o Ed. Física que le tocó a otro equipo).</p>
 
       <div className="mt-3 space-y-1">
         {presentes !== null && <p>Asistencia: promedio de <b>{presentes}</b> presentes por día y <b>{tardes}</b> {tardes === 1 ? 'llegada tarde' : 'llegadas tarde'} en la semana.</p>}
@@ -155,7 +159,7 @@ export default function ResumenSemanal() {
       lunes: sel, esActual: sel === semana, jornadas, bonos,
       dias: diasTodos.filter((x) => lunesDe(x.fecha) === sel),
       premio: premios.find((p) => p.id === sel)?.texto,
-      resumen: resumenTurnos(jornadas, { bonos, diasSinClase: sinClaseTodos, diasEdFisica: edFisicaTodos }),
+      resumen: resumenTurnos(jornadas, { bonos, diasSinClase: sinClaseTodos }),
       sinClase: sinClaseTodos, edFisica: edFisicaTodos,
     };
   }, [sel, semana, historial, bonosTodos, diasTodos, premios, sinClaseTodos, edFisicaTodos]);

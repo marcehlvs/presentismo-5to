@@ -37,7 +37,7 @@ export default function EvolucionSemanal() {
   const [metricaId, setMetricaId] = useState(CRITERIO_GANADOR === 'total' ? 'semana' : 'promedio');
   const metrica = METRICAS.find((m) => m.id === metricaId);
 
-  const semanas = useMemo(() => resumenPorSemana(historial, bonosTodos, sinClaseTodos, edFisicaTodos), [historial, bonosTodos, sinClaseTodos, edFisicaTodos]);
+  const semanas = useMemo(() => resumenPorSemana(historial, bonosTodos, sinClaseTodos), [historial, bonosTodos, sinClaseTodos]);
 
   // valores[equipo] = un número (o null) por semana
   const valores = useMemo(() => {

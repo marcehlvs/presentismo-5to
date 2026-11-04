@@ -42,3 +42,9 @@
 @media (prefers-reduced-motion: reduce) {
   .anim-exito, .anim-giro, .anim-carga { animation: none; }
 }
+
+/* Panel docente en computadora: se ve todo a tamaño normal (100 %) sin tener que bajar el zoom del navegador.
+   En celulares y tablets no se toca. */
+@media (min-width: 1024px) {
+  .panel-docente { zoom: 0.8; }
+}

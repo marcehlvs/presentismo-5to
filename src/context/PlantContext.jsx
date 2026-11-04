@@ -1,17 +1,18 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { onAuthStateChanged, signInAnonymously, signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import {
-  collection, deleteField, doc, getDoc, increment, getDocs, onSnapshot, query, runTransaction, serverTimestamp, setDoc, where, writeBatch,
+  collection, deleteDoc, deleteField, doc, getDoc, increment, getDocs, limit, onSnapshot, orderBy, query, runTransaction, serverTimestamp, setDoc, where, writeBatch,
 } from 'firebase/firestore';
 import { auth, db } from '../firebase';
 import { feriadoDe } from '../data/feriados';
 import { ALUMNOS, TURNOS, TAREAS, TAREAS_EDFISICA, PUNTAJES_INICIALES, getJornada, jefeDelDia, IDS_EXTRA } from '../data/mockData';
 import {
-  BONO_MAXIMO, aplicarFeriados, PUNTOS_CHECKLIST, PUNTOS_CIERRE, PUNTOS_DESAFIO, PUNTOS_EDFISICA, TAREA_EXTRA_MAX, conVersionEdFisica, crearDiasEdFisica, deIso, diasEdFisicaEn, sinVersionEdFisica, validarDiasEdFisica, hoyISO, lunesDe, resumenTurnos, sumarDias,
+  BONO_MAXIMO, MODELO_NUEVO_DESDE, PUNTOS_EXTRA, MAX_EXTRAS_DIA, aplicarFeriados, PUNTOS_CHECKLIST, PUNTOS_CIERRE, PUNTOS_DESAFIO, PUNTOS_EDFISICA, TAREA_EXTRA_MAX, conVersionEdFisica, crearDiasEdFisica, deIso, diasEdFisicaEn, sinVersionEdFisica, validarDiasEdFisica, hoyISO, lunesDe, resumenTurnos, sumarDias,
 } from '../lib/semanas';
 import { sortearGrupos, validarGrupos } from '../lib/grupos';
 import { alumnosEn, conVersion, sinVersion, validarLideres } from '../lib/lideres';
-import { premiosTrasAprobacion } from '../lib/premios';
+import { premioExtra, premiosTrasAprobacion } from '../lib/premios';
+import { quedanPorSalir, sortearEdFisica as elegirAlAzar } from '../lib/sorteoEdFisica';
 
 export const PlantContext = createContext(null);
 
@@ -57,7 +58,11 @@ async function leerTurno(tx, turnoId) {
   const ref = doc(db, 'turnos', turnoId);
   return { ref, existe: (await tx.get(ref)).exists(), turnoId };
 }
-const sumar = (tx, t, n) => tx.set(t.ref, { puntos: t.existe ? increment(n) : PUNTAJES_INICIALES[t.turnoId] + n });
+// Cada cambio del contador deja un movimiento (equipo, cantidad, motivo, jornada, quién): si un total no cierra, se ve de dónde vino.
+const sumar = (tx, t, n, motivo = '', jornada = '') => {
+  tx.set(t.ref, { puntos: t.existe ? increment(n) : PUNTAJES_INICIALES[t.turnoId] + n });
+  tx.set(doc(collection(db, 'movimientos')), { turnoId: t.turnoId, delta: n, motivo: String(motivo).slice(0, 120), jornada, uid: auth.currentUser?.uid ?? '', creado: serverTimestamp() });
+};
 
 // Devolución del docente sobre una tarea o sobre la respuesta al desafío (clave 'respuesta').
 // Rechazar siempre deja registro; aprobar solo si hay comentario (si no, se limpia lo anterior).
@@ -74,13 +79,15 @@ const setDeFechas = (dias, campo = 'sinClase') => new Set(dias.filter((d) => d[c
 const momentoExtra = (m) => (m === 'cierre' || m === 'edfisica' ? m : 'apertura');
 
 // Tareas de una jornada: las fijas, las de Ed. Física (si ese día hay) y las extra que cargó el docente
-const armarTareas = (conEdFisica, items = []) => [
+// Desde MODELO_NUEVO_DESDE las extras son opcionales (momento 'extra': no frenan ningún bloque y suman PUNTOS_EXTRA cada una);
+// antes eran parte del bloque que eligiera el docente.
+const armarTareas = (conEdFisica, items = [], fecha = '9999-12-31') => [
   ...TAREAS,
   ...(conEdFisica ? TAREAS_EDFISICA : []),
   ...items
     .map((x) => ({
-      id: x.id, momento: momentoExtra(x.momento),
-      titulo: x.titulo, detalle: 'Tarea agregada por el docente', icono: 'ClipboardList',
+      id: x.id, momento: fecha >= MODELO_NUEVO_DESDE ? 'extra' : momentoExtra(x.momento),
+      titulo: x.titulo, detalle: fecha >= MODELO_NUEVO_DESDE ? `Opcional: +${PUNTOS_EXTRA} puntos (hasta ${MAX_EXTRAS_DIA} por día)` : 'Tarea agregada por el docente', icono: 'ClipboardList',
     }))
     .filter((t) => t.momento !== 'edfisica' || conEdFisica),
 ];
@@ -109,6 +116,8 @@ export function PlantProvider({ children }) {
   const [gruposDocs, setGruposDocs] = useState([]); // sorteos de grupos de todas las semanas (uno por semana)
   const [pinesRequeridos, setPinesRequeridos] = useState([]); // números de líder que tienen PIN (config/pines; los PIN no son públicos)
   const [pinesDocente, setPinesDocente] = useState({}); // PIN de cada líder, solo para el docente
+  const [movimientos, setMovimientos] = useState([]); // solo docente: últimos cambios del contador de puntos
+  const [sorteosEF, setSorteosEF] = useState([]); // sorteos de líder de Ed. Física (uno por fecha)
   const [versionesEF, setVersionesEF] = useState([]); // días de Ed. Física cargados por el docente (con fecha de vigencia)
   const [versionesLideres, setVersionesLideres] = useState([]); // cambios de líderes cargados por el docente (con fecha de vigencia)
   const [extras, setExtras] = useState([]); // tareas extra que agrega el docente para hoy
@@ -190,9 +199,11 @@ export function PlantProvider({ children }) {
       onSnapshot(collection(db, 'grupos'), (s) => setGruposDocs(docsA(s)), fallo),
       onSnapshot(doc(db, 'config', 'pines'), (s) => setPinesRequeridos(s.exists() ? (s.data().requeridos ?? []).map(Number) : []), fallo),
       solo(esDocente, () => onSnapshot(collection(db, 'pines'), (s) => setPinesDocente(Object.fromEntries(s.docs.map((d) => [Number(d.id), d.data().pin]))), fallo)),
+      onSnapshot(collection(db, 'edfisica_sorteos'), (s) => setSorteosEF(docsA(s)), fallo),
       onSnapshot(doc(db, 'config', 'edfisica'), (s) => setVersionesEF(s.exists() ? s.data().versiones ?? [] : []), fallo),
       onSnapshot(doc(db, 'config', 'lideres'), (s) => setVersionesLideres(s.exists() ? s.data().versiones ?? [] : []), fallo),
       solo(esDocente, () => onSnapshot(collection(db, 'jornadas'), (s) => setHistorial(docsA(s)), fallo)),
+      solo(esDocente, () => onSnapshot(query(collection(db, 'movimientos'), orderBy('creado', 'desc'), limit(40)), (s) => setMovimientos(docsA(s)), fallo)),
       solo(esDocente, () => onSnapshot(collection(db, 'dias'), (s) => setDiasTodos(docsA(s)), fallo)),
       solo(esDocente, () => onSnapshot(collection(db, 'bonos'), (s) => setBonosTodos(docsA(s)), fallo)),
       solo(esDocente, () => onSnapshot(collection(db, 'premios'), (s) => setPremios(docsA(s)), fallo)),
@@ -212,7 +223,7 @@ export function PlantProvider({ children }) {
   const edFisicaSemana = useMemo(() => crearDiasEdFisica(diasSemana, versionesEF), [diasSemana, versionesEF]);
   const edFisicaTodos = useMemo(() => crearDiasEdFisica(diasTodos, versionesEF), [diasTodos, versionesEF]);
   const resumenSemana = useMemo(
-    () => resumenTurnos(jornadasSemana, { bonos: bonosSemana, diasSinClase: sinClaseSemana, diasEdFisica: edFisicaSemana }),
+    () => resumenTurnos(jornadasSemana, { bonos: bonosSemana, diasSinClase: sinClaseSemana }),
     [jornadasSemana, bonosSemana, sinClaseSemana, edFisicaSemana]
   );
   const diaHoy = diasSemana.find((d) => d.fecha === fecha) ?? null;
@@ -227,15 +238,21 @@ export function PlantProvider({ children }) {
   const actual = jornadasHoy.find((j) => j.jefeId === jefeId) ?? {};
   const hechas = actual.declaradas ?? {};
   const aprobadas = actual.aprobadas ?? {};
-  const tareasDelDia = useMemo(() => armarTareas(hoyEdFisica, extras), [extras, hoyEdFisica]);
+  // Ed. Física con sorteo: el checklist lo hace solo el equipo del líder sorteado (antes del modelo nuevo, el líder del día)
+  const sorteoDe = (f) => sorteosEF.find((x) => x.fecha === f) ?? null;
+  const jefeEFHoy = sorteoDe(fecha)?.jefeId ?? null;
+  const edFisicaMia = hoyEdFisica && (fecha < MODELO_NUEVO_DESDE || (jefeId != null && jefeEFHoy === jefeId));
+  const tareasDelDia = useMemo(() => armarTareas(edFisicaMia, extras, fecha), [extras, edFisicaMia, fecha]);
   const completo = (momento, ap) => tareasDelDia.filter((t) => t.momento === momento).every((t) => ap[t.id]);
   // Para aprobar también jornadas de días anteriores: los docentes tienen cargadas todas las fechas; las demás cuentas, la semana en curso
   const sinClaseDe = (f) => (esDocente ? sinClaseTodos : sinClaseSemana).has(f);
   const edFisicaDe = (f) => (esDocente ? edFisicaTodos : edFisicaSemana).has(f) && !sinClaseDe(f);
-  const tareasEn = (f) => (f === fecha ? tareasDelDia : armarTareas(edFisicaDe(f), extrasTodos[f] ?? []));
+  const edFisicaPara = (f, jid) => edFisicaDe(f) && (f < MODELO_NUEVO_DESDE || (jid != null && sorteoDe(f)?.jefeId === jid));
+  const extrasDe = (f) => (f === fecha ? extras : extrasTodos[f] ?? []);
+  const tareasEn = (f, jid) => armarTareas(edFisicaPara(f, jid), extrasDe(f), f);
   const plantaOperativa = completo('apertura', aprobadas);
   const plantaCerrada = completo('cierre', aprobadas);
-  const plantaEdFisica = hoyEdFisica && completo('edfisica', aprobadas);
+  const plantaEdFisica = edFisicaMia && completo('edfisica', aprobadas);
 
   const ranking = useMemo(
     () => TURNOS.map((t) => ({ ...t, puntos: puntajes[t.id] ?? PUNTAJES_INICIALES[t.id] })).sort((a, b) => b.puntos - a.puntos),
@@ -275,9 +292,9 @@ export function PlantProvider({ children }) {
   // de un bloque ya premiado retira ese premio y resta sus puntos al equipo. ----
   const aprobarTarea = (j, tareaId, valor, comentario = '') => {
     if (sinClaseDe(j.fecha)) return Promise.resolve();
-    const lista = tareasEn(j.fecha);
+    const lista = tareasEn(j.fecha, j.jefeId);
     const momentoTarea = lista.find((t) => t.id === tareaId)?.momento;
-    const edFisicaVigente = edFisicaDe(j.fecha);
+    const edFisicaVigente = edFisicaPara(j.fecha, j.jefeId);
     return runTransaction(db, async (tx) => {
       const ref = doc(db, 'jornadas', j.id);
       const d = (await tx.get(ref)).data();
@@ -288,9 +305,15 @@ export function PlantProvider({ children }) {
       });
       // Las reglas solo dejan a la cuenta de Ed. Física sumar 10 puntos, nunca restar
       if (esDocenteEF && puntos < 0) throw Object.assign(new Error('Ed. Física no puede restar puntos'), { code: 'ef-no-quita' });
-      if (puntos) sumar(tx, await leerTurno(tx, turnoDe(d.jefeId)), puntos);
+      // Extra opcional: +PUNTOS_EXTRA, con tope por jornada (se anota en premiosExtra cuáles ya pagaron)
+      const extra = momentoTarea === 'extra' ? premioExtra({ previo: d, tareaId, valor }) : { cambios: {}, puntos: 0 };
+      const total = puntos + extra.puntos;
+      if (total) {
+        const motivos = [...Object.keys(premios).filter((k) => premios[k] !== (d[k] === true)).map((k) => `${k}${premios[k] ? '' : ' (retirado)'}`), ...(extra.puntos ? [`extra ${tareaId}${extra.puntos < 0 ? ' (retirada)' : ''}`] : [])];
+        sumar(tx, await leerTurno(tx, turnoDe(d.jefeId)), total, motivos.join(', ') || 'aprobación', j.id);
+      }
       tx.update(ref, {
-        aprobadas: nuevas, devoluciones: conDevolucion(d, tareaId, 'aprobada', valor ? comentario : ''), ...premios,
+        aprobadas: nuevas, devoluciones: conDevolucion(d, tareaId, 'aprobada', valor ? comentario : ''), ...premios, ...extra.cambios,
       });
     }).catch((e) => setError(mensajeError(e)));
   };
@@ -316,7 +339,7 @@ export function PlantProvider({ children }) {
       const d = (await tx.get(ref)).data();
       if (d.desafioAprobado) return;
       const t = await leerTurno(tx, turnoDe(d.jefeId));
-      sumar(tx, t, PUNTOS_DESAFIO);
+      sumar(tx, t, PUNTOS_DESAFIO, 'desafío aprobado', j.id);
       tx.update(ref, { desafioAprobado: true, devoluciones: conDevolucion(d, 'respuesta', 'aprobada', comentario) });
     }).catch((e) => setError(mensajeError(e)));
   };
@@ -356,7 +379,7 @@ export function PlantProvider({ children }) {
   const publicarTareasExtra = async (items) => {
     const limpios = items
       .filter((x) => IDS_EXTRA.includes(x.id) && x.titulo.trim())
-      .map((x) => ({ id: x.id, titulo: x.titulo.trim().slice(0, TAREA_EXTRA_MAX), momento: momentoExtra(x.momento) }));
+      .map((x) => ({ id: x.id, titulo: x.titulo.trim().slice(0, TAREA_EXTRA_MAX), momento: fecha >= MODELO_NUEVO_DESDE ? 'extra' : momentoExtra(x.momento) }));
     try {
       await setDoc(doc(db, 'tareas_extra', fecha), { fecha, items: limpios });
       setError('');
@@ -560,6 +583,38 @@ export function PlantProvider({ children }) {
     }
   };
 
+  // Docente: sortea el líder cuyo equipo hace hoy el checklist de Ed. Física. Rotación: no repite hasta que salieron los cinco.
+  // Se guarda con id = fecha y no se vuelve a sortear (si ya hay uno, se mantiene); para cambiarlo está elegirEdFisica.
+  const sortearEdFisica = async (f = fecha) => {
+    try {
+      const ids = alumnos.map((a) => a.id);
+      await runTransaction(db, async (tx) => {
+        const ref = doc(db, 'edfisica_sorteos', f);
+        if ((await tx.get(ref)).exists()) return;
+        const jefeSorteado = elegirAlAzar({ sorteos: sorteosEF.filter((x) => x.fecha !== f), ids });
+        tx.set(ref, { fecha: f, jefeId: jefeSorteado, manual: false, creado: serverTimestamp() });
+      });
+      setError('');
+      return true;
+    } catch (e) {
+      setError(mensajeError(e));
+      return false;
+    }
+  };
+  // Docente: cambia a mano el líder de Ed. Física del día (por ejemplo, si el sorteado faltó). Queda marcado como manual.
+  const elegirEdFisica = async (id, f = fecha) => {
+    if (!alumnos.some((a) => a.id === id)) return false;
+    try {
+      await setDoc(doc(db, 'edfisica_sorteos', f), { fecha: f, jefeId: id, manual: true, creado: serverTimestamp() });
+      setError('');
+      return true;
+    } catch (e) {
+      setError(mensajeError(e));
+      return false;
+    }
+  };
+  const quitarSorteoEF = (f = fecha) => deleteDoc(doc(db, 'edfisica_sorteos', f)).catch((e) => setError(mensajeError(e)));
+
   // Docente: bono de puntos extra para un equipo. Se guarda el bono y se suman los puntos en la misma transacción.
   const cargarBono = async ({ turnoId, puntos, motivo, fecha: fechaBono }) => {
     const pts = Math.trunc(Number(puntos));
@@ -569,7 +624,7 @@ export function PlantProvider({ children }) {
       await runTransaction(db, async (tx) => {
         const t = await leerTurno(tx, turnoId);
         tx.set(doc(collection(db, 'bonos')), { turnoId, puntos: pts, motivo: texto, fecha: fechaBono, creado: serverTimestamp() });
-        sumar(tx, t, pts);
+        sumar(tx, t, pts, `bono: ${texto}`);
       });
       setError('');
       return true;
@@ -583,7 +638,12 @@ export function PlantProvider({ children }) {
   const corregirPuntos = async (turnoId, valor) => {
     if (!TURNOS.some((t) => t.id === turnoId) || !Number.isInteger(valor) || valor < 0) return false;
     try {
-      await setDoc(doc(db, 'turnos', turnoId), { puntos: valor });
+      await runTransaction(db, async (tx) => {
+        const t = await leerTurno(tx, turnoId);
+        const actualPuntos = t.existe ? (await tx.get(t.ref)).data().puntos : PUNTAJES_INICIALES[turnoId];
+        tx.set(t.ref, { puntos: valor });
+        tx.set(doc(collection(db, 'movimientos')), { turnoId, delta: valor - actualPuntos, motivo: `corrección manual: ${actualPuntos} → ${valor}`, jornada: '', uid: auth.currentUser?.uid ?? '', creado: serverTimestamp() });
+      });
       setError('');
       return true;
     } catch (e) {
@@ -600,7 +660,7 @@ export function PlantProvider({ children }) {
       if (!snap.exists()) return;
       const t = await leerTurno(tx, snap.data().turnoId);
       tx.delete(ref);
-      sumar(tx, t, -snap.data().puntos);
+      sumar(tx, t, -snap.data().puntos, 'bono quitado');
     }).catch((e) => setError(mensajeError(e)));
 
   // Superadmin: vuelve TODO a cero. Puntos de los equipos, jornadas (checklists, asistencia, respuestas), bonos, y el desafío
@@ -613,6 +673,8 @@ export function PlantProvider({ children }) {
       const docs = [
         ...(await getDocs(collection(db, 'jornadas'))).docs,
         ...(await getDocs(collection(db, 'bonos'))).docs,
+        ...(await getDocs(collection(db, 'movimientos'))).docs,
+        ...(await getDocs(collection(db, 'edfisica_sorteos'))).docs,
       ];
       for (let i = 0; i < docs.length; i += 400) {
         const b = writeBatch(db);
@@ -637,7 +699,7 @@ export function PlantProvider({ children }) {
   const logoutDocente = () => signOut(auth);
 
   const value = {
-    alumnos, alumnosEn: alumnosDe, versionesLideres, guardarLideres, quitarVersionLideres, tareas: tareasDelDia, jornada, fecha, jefe, jefeSugerido: jefeDelDia(new Date(), alumnos), hechas, aprobadas, plantaOperativa, plantaCerrada, plantaEdFisica, hoyEdFisica, asistencia: actual.asistencia ?? null, extras,
+    alumnos, alumnosEn: alumnosDe, versionesLideres, guardarLideres, quitarVersionLideres, tareas: tareasDelDia, jornada, fecha, jefe, jefeSugerido: jefeDelDia(new Date(), alumnos), hechas, aprobadas, plantaOperativa, plantaCerrada, plantaEdFisica, hoyEdFisica, edFisicaMia, jornadaActual: actual, movimientos, tareasEn, jefeEFHoy, sorteosEF, sorteoHoy: sorteoDe(fecha), sortearEdFisica, elegirEdFisica, quitarSorteoEF, faltanEF: quedanPorSalir(sorteosEF, alumnos.map((a) => a.id)), asistencia: actual.asistencia ?? null, extras, puntosExtra: PUNTOS_EXTRA, maxExtras: MAX_EXTRAS_DIA, extrasPagasHoy: Object.values(actual.premiosExtra ?? {}).filter(Boolean).length, nuevoModelo: fecha >= MODELO_NUEVO_DESDE,
     devoluciones: actual.devoluciones ?? {},
     suplenteHoy: jefe ? suplentesHoy[String(jefe.id)] ?? null : null,
     desafioResuelto: actual.desafioAprobado === true, respuestaEnviada: actual.respuesta ?? null, rechazos: actual.rechazos ?? 0,
@@ -648,7 +710,7 @@ export function PlantProvider({ children }) {
     desafioHoy, criterioDocente, publicarDesafio,
     semana, resumenSemana, premioSemana, historial, premios, publicarPremio, reiniciarPuntos,
     diaHoy, hoySinClase, suplentesHoy, jornadasSemana, bonosSemana, diasTodos, bonosTodos, sinClaseTodos, edFisicaTodos,
-    sinClaseDe, tareasEn,
+    sinClaseDe,
     gruposDocs, gruposSemana, guardarGruposSemana,
     pinesRequeridos, pinesDocente, guardarPin, quitarPin,
     puntajes, corregirPuntos, versionesEF, diasEdFisicaHoy: diasEdFisicaEn(versionesEF, fecha), guardarDiasEdFisica, quitarVersionEdFisica,

@@ -1,5 +1,5 @@
 import { ALUMNOS, TURNOS } from '../data/mockData';
-import { CRITERIO_GANADOR, crearDiasEdFisica, deIso, hoyISO, puntosDeJornada, resumenPorSemana } from './semanas';
+import { CRITERIO_GANADOR, crearDiasEdFisica, deIso, extrasPagas, hoyISO, puntosDeJornada, resumenPorSemana } from './semanas';
 
 const DIAS = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
 const nombreEquipo = (id) => TURNOS.find((t) => t.id === id)?.nombre ?? id;
@@ -32,11 +32,12 @@ export function armarHojas({ jornadas, bonos, dias, premios, alumnosEn, versione
       si(j.premioCierre),
       sinClase.has(j.fecha) || !edFisica.has(j.fecha) ? null : si(j.premioEdFisica),
       si(j.desafioAprobado),
+      extrasPagas(j),
       puntosDeJornada(j),
       sinClase.has(j.fecha) ? 'No (día sin clase)' : 'Sí',
     ]);
 
-  const filasSemanas = resumenPorSemana(jornadas, bonos, sinClase, edFisica)
+  const filasSemanas = resumenPorSemana(jornadas, bonos, sinClase)
     .reverse()
     .flatMap((s) => {
       const premio = premios.find((p) => p.id === s.lunes)?.texto ?? null;
@@ -74,8 +75,8 @@ export function armarHojas({ jornadas, bonos, dias, premios, alumnosEn, versione
 
   return [
     hoja('Jornadas',
-      ['Fecha', 'Día', 'Equipo', 'Jefe de Planta', 'Suplente', 'Presentes', 'Llegadas tarde', 'Tareas aprobadas', 'Checklist matutino completo', 'Cierre de planta completo', 'Ed. Física completa', 'Desafío aprobado', 'Puntos', 'Cuenta'],
-      filasJornadas, [12, 12, 20, 18, 18, 11, 15, 17, 27, 25, 19, 16, 9, 20]),
+      ['Fecha', 'Día', 'Equipo', 'Jefe de Planta', 'Suplente', 'Presentes', 'Llegadas tarde', 'Tareas aprobadas', 'Checklist matutino completo', 'Cierre de planta completo', 'Ed. Física completa', 'Desafío aprobado', 'Extras pagas', 'Puntos', 'Cuenta'],
+      filasJornadas, [12, 12, 20, 18, 18, 11, 15, 17, 27, 25, 19, 16, 12, 9, 20]),
     hoja('Semanas',
       ['Semana (lunes)', 'Equipo', 'Puntos de jornadas', 'Bonos', 'Puntos totales', 'Jornadas', CRITERIO_GANADOR === 'promedio' ? 'Promedio por jornada' : 'Promedio (referencia)', 'Ganador', 'Premio'],
       filasSemanas, [15, 20, 18, 8, 15, 10, 21, 9, 30]),

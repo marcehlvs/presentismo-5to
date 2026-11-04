@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { crearDiasEdFisica, lunesDe, puntosDeJornada, resumenTurnos, sumarDias } from './semanas';
+import { crearDiasEdFisica, lunesDe, puntosDeJornada, equiposCalificados, puntosDetalleJornada, resumenTurnos, sumarDias } from './semanas';
 
 const completa = (fecha, jefeId, ef) => ({ fecha, jefeId, premioChecklist: true, premioCierre: true, desafioAprobado: true, premioEdFisica: ef });
 
@@ -49,21 +49,34 @@ describe('puntos y ranking semanal', () => {
     expect(puntosDeJornada({ premioChecklist: false, premioCierre: true })).toBe(10);
   });
 
-  it('el promedio es sobre puntos posibles: Ed. Física completa no da ventaja', () => {
-    const js = [completa('2026-11-02', 1, true), completa('2026-11-03', 2), completa('2026-11-04', 3), completa('2026-11-05', 4), completa('2026-11-06', 5, true)];
-    const ef = { has: (f) => f === '2026-11-02' || f === '2026-11-06' };
-    const r = resumenTurnos(js, { diasEdFisica: ef });
-    expect(r.lista.every((t) => t.promedio === 35)).toBe(true);
-    expect(r.empate).toBe(true);
-    expect(r.ganador).toBeNull();
+  it('el promedio es puntos / jornadas, sin normalizar: la Ed. Física sorteada sí da ventaja', () => {
+    const js = [completa('2026-11-02', 1, true), completa('2026-11-03', 2), completa('2026-11-04', 3)];
+    const r = resumenTurnos(js);
+    expect(r.lista.find((t) => t.id === 'e1').promedio).toBe(45);
+    expect(r.lista.find((t) => t.id === 'e2').promedio).toBe(35);
+    expect(r.ganador.id).toBe('e1');
   });
 
-  it('saltear la Ed. Física baja el promedio de ese equipo', () => {
-    const js = [completa('2026-11-02', 1, true), completa('2026-11-03', 2), completa('2026-11-06', 5, false)];
-    const ef = { has: (f) => f === '2026-11-02' || f === '2026-11-06' };
-    const r = resumenTurnos(js, { diasEdFisica: ef });
-    expect(r.lista.find((t) => t.id === 'e5').promedio).toBeCloseTo(27.2, 1);
-    expect(r.ganador).toBeNull(); // e1 y e2 empatan en 35
+  it('una jornada vacía (sin nada marcado) no cuenta como jornada', () => {
+    const js = [completa('2026-11-02', 1), completa('2026-11-03', 2), { fecha: '2026-11-04', jefeId: 3 }];
+    const r = resumenTurnos(js);
+    const e3 = r.lista.find((t) => t.id === 'e3');
+    expect(e3.jornadas).toBe(0);
+    expect(e3.compite).toBe(false);
+  });
+
+  it('las extras pagas suman 5 cada una al promedio', () => {
+    const j = { ...completa('2026-11-03', 2), premiosExtra: { x1: true, x2: true, x3: false } };
+    expect(puntosDeJornada(j)).toBe(35 + 10);
+    expect(puntosDetalleJornada(j).extras).toBe(10);
+  });
+
+  it('los bonos suman a la tabla acumulada pero no al promedio del ganador', () => {
+    const js = [completa('2026-11-02', 1), completa('2026-11-03', 2, false)];
+    const r = resumenTurnos(js, { bonos: [{ turnoId: 'e2', puntos: 100 }] });
+    const e2 = r.lista.find((t) => t.id === 'e2');
+    expect(e2.puntos).toBe(135);
+    expect(e2.promedio).toBe(35);
   });
 
   it('los días sin clase no cuentan como jornada', () => {
@@ -97,5 +110,21 @@ describe('puntos y ranking semanal', () => {
     const r = resumenTurnos([], { bonos: [{ turnoId: 'e1', puntos: 20 }] });
     expect(r.ganador).toBeNull();
     expect(r.empate).toBe(false);
+  });
+});
+
+describe('bonos sugeridos: equipos que califican', () => {
+  const asist = (j, tardes) => ({ ...j, asistencia: { presentes: 20, tardes } });
+  it('semana perfecta: todas las jornadas con apertura, desafío y cierre', () => {
+    const r = equiposCalificados([completa('2026-11-02', 1), completa('2026-11-03', 2), { ...completa('2026-11-04', 3), premioCierre: false }]);
+    expect(r['semana-perfecta']).toEqual(['e1', 'e2']);
+  });
+  it('cero tardes: con asistencia declarada y sin tardes', () => {
+    const r = equiposCalificados([asist(completa('2026-11-02', 1), 0), asist(completa('2026-11-03', 2), 2), completa('2026-11-04', 3)]);
+    expect(r['cero-tardes']).toEqual(['e1']);
+  });
+  it('un día sin clase no cuenta', () => {
+    const r = equiposCalificados([{ ...completa('2026-11-02', 1), premioCierre: false }], new Set(['2026-11-02']));
+    expect(r['semana-perfecta']).toEqual([]);
   });
 });

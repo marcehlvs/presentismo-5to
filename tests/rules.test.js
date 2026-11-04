@@ -256,3 +256,42 @@ describe('superadmin', () => {
     await assertSucceeds(deleteDoc(doc(superadmin(), 'jornadas', `${VIEJO}_1`)));
   });
 });
+
+describe('sorteo de Ed. Física y movimientos de puntos', () => {
+  const sorteo = { fecha: HOY, jefeId: 3, manual: false, creado: serverTimestamp() };
+
+  it('el docente crea el sorteo del día y cualquiera con sesión lo lee', async () => {
+    await assertSucceeds(setDoc(doc(docente(), 'edfisica_sorteos', HOY), sorteo));
+    await assertSucceeds(getDoc(doc(alumno(), 'edfisica_sorteos', HOY)));
+  });
+
+  it('un alumno no puede crear ni cambiar el sorteo', async () => {
+    await assertFails(setDoc(doc(alumno(), 'edfisica_sorteos', HOY), sorteo));
+  });
+
+  it('el sorteo exige líder de 1 a 5 y que el id sea la fecha', async () => {
+    await assertFails(setDoc(doc(docente(), 'edfisica_sorteos', HOY), { ...sorteo, jefeId: 9 }));
+    await assertFails(setDoc(doc(docente(), 'edfisica_sorteos', VIEJO), sorteo));
+  });
+
+  it('el docente registra movimientos y los lee; el alumno no', async () => {
+    const m = { turnoId: 'e1', delta: 10, motivo: 'premioChecklist', jornada: `${HOY}_1`, uid: 'docente', creado: serverTimestamp() };
+    await assertSucceeds(setDoc(doc(docente(), 'movimientos', 'm1'), m));
+    await assertSucceeds(getDoc(doc(docente(), 'movimientos', 'm1')));
+    await assertFails(getDoc(doc(alumno(), 'movimientos', 'm1')));
+    await assertFails(setDoc(doc(alumno(), 'movimientos', 'm2'), { ...m, uid: 'alumno' }));
+  });
+
+  it('la cuenta de Ed. Física solo registra el +10 y con su propio uid', async () => {
+    const m = { turnoId: 'e1', delta: 10, motivo: 'premioEdFisica', jornada: `${HOY}_1`, uid: 'ef', creado: serverTimestamp() };
+    await assertSucceeds(setDoc(doc(docenteEF(), 'movimientos', 'm1'), m));
+    await assertFails(setDoc(doc(docenteEF(), 'movimientos', 'm2'), { ...m, delta: 50 }));
+    await assertFails(setDoc(doc(docenteEF(), 'movimientos', 'm3'), { ...m, uid: 'otro' }));
+  });
+
+  it('solo el superadmin borra movimientos', async () => {
+    await sembrar((db) => setDoc(doc(db, 'movimientos', 'm1'), { turnoId: 'e1', delta: 5, motivo: 'x', jornada: '', uid: 'docente', creado: new Date() }));
+    await assertFails(deleteDoc(doc(docente(), 'movimientos', 'm1')));
+    await assertSucceeds(deleteDoc(doc(superadmin(), 'movimientos', 'm1')));
+  });
+});

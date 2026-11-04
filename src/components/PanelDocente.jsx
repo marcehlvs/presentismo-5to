@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import { usePlant } from '../context/PlantContext';
 import { IDS_EXTRA, MOMENTOS, TURNOS } from '../data/mockData';
-import { CRITERIO_GANADOR, TAREA_EXTRA_MAX, etiquetaDia, etiquetaSemana, lunesDe, puntosDeJornada, resumenPorSemana } from '../lib/semanas';
+import { CRITERIO_GANADOR, MAX_EXTRAS_DIA, PUNTOS_EXTRA, TAREA_EXTRA_MAX, etiquetaDia, etiquetaSemana, lunesDe, puntosDeJornada, resumenPorSemana } from '../lib/semanas';
 import { exportarHistorial } from '../lib/exportar';
 import Leaderboard from './Leaderboard';
 import AvisoSinClase from './AvisoSinClase';
 import FilaTareaDocente from './FilaTareaDocente';
+import SorteoEdFisica from './SorteoEdFisica';
+import Movimientos from './Movimientos';
 import RevisionDesafio from './RevisionDesafio';
 import DiasEspeciales from './DiasEspeciales';
 import Bonos from './Bonos';
@@ -85,7 +87,7 @@ function FormularioDesafio() {
 
 function FormularioTareasExtra() {
   const { extras, publicarTareasExtra } = usePlant();
-  const armar = () => IDS_EXTRA.map((id) => extras.find((x) => x.id === id) ?? { id, titulo: '', momento: 'apertura' });
+  const armar = () => IDS_EXTRA.map((id) => extras.find((x) => x.id === id) ?? { id, titulo: '', momento: 'extra' });
   const [items, setItems] = useState(armar);
   const [estado, setEstado] = useState('');
 
@@ -103,7 +105,7 @@ function FormularioTareasExtra() {
   return (
     <section className="bg-white border-2 border-acero rounded-lg p-5">
       <h2 className="font-display text-3xl font-bold mb-1">Tareas extra de hoy</h2>
-      <p className="text-sm text-acero/70 mb-3">Se suman al checklist de los alumnos solo por hoy. Dejá vacío lo que no uses.</p>
+      <p className="text-sm text-acero/70 mb-3">Son opcionales y solo por hoy: cada una aprobada suma +{PUNTOS_EXTRA} puntos al equipo (hasta {MAX_EXTRAS_DIA} por día) y no frena el premio del checklist. Sirven para que los equipos compensen los días sin Ed. Física. Dejá vacío lo que no uses.</p>
       <form onSubmit={guardar} className="space-y-2">
         {items.map((x, i) => (
           <div key={x.id} className="flex flex-col sm:flex-row gap-2">
@@ -111,11 +113,6 @@ function FormularioTareasExtra() {
               value={x.titulo} onChange={(e) => cambiar(i, 'titulo', e.target.value)} maxLength={TAREA_EXTRA_MAX} rows={2}
               placeholder={`Tarea extra ${i + 1}`} aria-label={`Tarea extra ${i + 1}`} className={`${campo} resize-y`}
             />
-            <select value={x.momento} onChange={(e) => cambiar(i, 'momento', e.target.value)} aria-label="Momento" className={`${campo} sm:w-48`}>
-              <option value="apertura">{MOMENTOS.apertura}</option>
-              <option value="edfisica">{MOMENTOS.edfisica} (si hay ese día)</option>
-              <option value="cierre">{MOMENTOS.cierre}</option>
-            </select>
           </div>
         ))}
         <div className="flex items-center gap-3 pt-1">
@@ -156,13 +153,13 @@ function FormularioPremio() {
 }
 
 function Historial() {
-  const { historial, premios, bonosTodos, diasTodos, sinClaseTodos, edFisicaTodos, alumnosEn, versionesEF } = usePlant();
+  const { historial, premios, bonosTodos, diasTodos, sinClaseTodos, edFisicaTodos, alumnosEn, versionesEF, fecha } = usePlant();
   const [exportando, setExportando] = useState(false);
   const [falloExport, setFalloExport] = useState(false);
 
   const semanas = useMemo(
     () =>
-      resumenPorSemana(historial, bonosTodos, sinClaseTodos, edFisicaTodos)
+      resumenPorSemana(historial, bonosTodos, sinClaseTodos)
         .reverse()
         .map((s) => ({
           ...s,
@@ -203,7 +200,7 @@ function Historial() {
         {semanas.map((s) => (
           <details key={s.lunes} className="border-2 border-acero/20 rounded-md">
             <summary className="cursor-pointer p-3 font-semibold">
-              {etiquetaSemana(s.lunes)} · {s.ganador ? `Ganó ${s.ganador.nombre}` : s.empate ? 'Empate' : 'Sin ganador'}
+              {etiquetaSemana(s.lunes)} · {s.ganador ? `${s.lunes === lunesDe(fecha) ? 'Va ganando' : 'Ganó'} ${s.ganador.nombre}` : s.empate ? 'Empate' : 'Sin ganador'}
             </summary>
             <div className="p-3 pt-0 space-y-4">
               {s.premio && <p>Premio: <b>{s.premio}</b></p>}
@@ -339,7 +336,7 @@ const SOLAPA_KEY = 'panel-docente-solapa';
 const IDS_SOLAPAS = ['hoy', 'semana', 'calendario', 'lideres', 'puntos'];
 
 export default function PanelDocente() {
-  const { jornadasHoy, alumnos, tareas, logoutDocente, jornada, error, suplentesHoy, hoyEdFisica } = usePlant();
+  const { jornadasHoy, alumnos, tareasEn, fecha, logoutDocente, jornada, error, suplentesHoy, hoyEdFisica, nuevoModelo } = usePlant();
   const [activa, setActiva] = useState(() => {
     try { return solapaValida(IDS_SOLAPAS, sessionStorage.getItem(SOLAPA_KEY)); } catch { return IDS_SOLAPAS[0]; }
   });
@@ -353,11 +350,12 @@ export default function PanelDocente() {
     <>
       <AvisoSinClase />
       <Pendientes />
-      {hoyEdFisica && (
+      {hoyEdFisica && !nuevoModelo && (
         <p role="status" className="rounded-lg border-2 border-operativa bg-operativa/10 p-4 font-semibold">
           Hoy hay Educación Física: los alumnos ven su checklist y lo aprobás acá, en el bloque “Educación Física” de cada líder.
         </p>
       )}
+      <SorteoEdFisica />
       <FormularioDesafio />
       <FormularioTareasExtra />
       {jornadasHoy.length === 0 && (
@@ -366,13 +364,15 @@ export default function PanelDocente() {
       {jornadasHoy.map((j) => {
         const alumno = alumnos.find((a) => a.id === j.jefeId);
         const suplente = suplentesHoy[String(j.jefeId)];
+        const tareas = tareasEn(fecha, j.jefeId);
+        const momentos = ['apertura', ...(tareas.some((t) => t.momento === 'edfisica') ? ['edfisica'] : []), 'cierre', ...(tareas.some((t) => t.momento === 'extra') ? ['extra'] : [])];
         return (
           <section key={j.id} className="bg-white border-2 border-acero rounded-lg p-5">
             <h2 className="font-display text-3xl font-bold mb-3">
               {alumno?.nombre ?? `Jefe ${j.jefeId}`}
               {suplente && <span className="block font-sans text-base font-medium text-acero/70">Hoy lo reemplaza {suplente}. Los puntos van al equipo del líder.</span>}
             </h2>
-            {['apertura', ...(hoyEdFisica ? ['edfisica'] : []), 'cierre'].map((m) => (
+            {momentos.map((m) => (
               <div key={m} className="mt-4 first:mt-0">
                 <h3 className="font-display text-xl font-bold mb-2">{MOMENTOS[m]}</h3>
                 <ul className="space-y-2">
@@ -385,6 +385,7 @@ export default function PanelDocente() {
             {j.premioEdFisica && <p className="mt-1 text-sm text-operativa font-semibold">Educación Física completa: puntos ya sumados al equipo.</p>}
 
             <RevisionDesafio j={j} />
+            <p className="mt-3 border-t-2 border-acero/20 pt-2 font-semibold">Puntos de la jornada: {puntosDeJornada(j)}</p>
           </section>
         );
       })}
@@ -396,11 +397,11 @@ export default function PanelDocente() {
     { id: 'semana', titulo: 'Semana', contenido: <><FormularioPremio /><ResumenSemanal /><EvolucionSemanal /></> },
     { id: 'calendario', titulo: 'Calendario', contenido: <><DiasEspeciales /><DiasEdFisicaEditor /></> },
     { id: 'lideres', titulo: 'Líderes', contenido: <><GruposSemana /><LideresEditor /><PinesEditor /></> },
-    { id: 'puntos', titulo: 'Puntos', contenido: <><Bonos /><VerificarPuntos /><Historial /><ReiniciarPuntos /></> },
+    { id: 'puntos', titulo: 'Puntos', contenido: <><Bonos /><VerificarPuntos /><Movimientos /><Historial /><ReiniciarPuntos /></> },
   ];
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen panel-docente">
       <header className="bg-acero text-white">
         <div className="franja-peligro h-3" />
         <div className="max-w-6xl mx-auto px-4 py-5 flex items-center justify-between gap-4">

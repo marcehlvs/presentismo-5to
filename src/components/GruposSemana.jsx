@@ -4,12 +4,14 @@ import { TOTAL_CURSO, equipoDe } from '../data/mockData';
 import { avisosFijos, parsearNumeros, textoGrupo } from '../lib/grupos';
 import { etiquetaSemana } from '../lib/semanas';
 import { btn, campo } from './estilos';
+import { useConfirmar } from './Confirmar';
 import Avatar from './Avatar';
 
 // Grupos de la semana: se pueden definir a mano (por ejemplo, grupos ya sorteados en clase) y sortear los que faltan.
 // Cada líder tiene su número de lista; los compañeros se escriben por número de lista (no se guardan nombres).
 export default function GruposSemana() {
   const { alumnosEn, semana, gruposSemana, guardarGruposSemana } = usePlant();
+  const [confirmar, dialogo] = useConfirmar();
   const [textos, setTextos] = useState({});
   const [estado, setEstado] = useState('');
   const lideres = alumnosEn(semana);
@@ -33,7 +35,7 @@ export default function GruposSemana() {
   const hayManuales = Object.keys(analisis.fijos).length > 0;
 
   const ejecutar = async (modo, confirmacion) => {
-    if (confirmacion && !window.confirm(confirmacion)) return;
+    if (confirmacion && !(await confirmar(confirmacion, { aceptar: 'Sí, continuar' }))) return;
     setEstado('guardando');
     const ok = await guardarGruposSemana({ modo, manuales: analisis.fijos });
     setEstado(ok ? 'ok' : '');
@@ -90,6 +92,7 @@ export default function GruposSemana() {
         {estado === 'ok' && <span role="status" className="text-operativa font-semibold">Guardado ✓</span>}
       </div>
       {veces > 0 && <p className="mt-2 text-sm text-acero/70">Última actualización {cuando ? `el ${cuando}` : ''} · {veces === 1 ? '1 cambio registrado' : `${veces} cambios registrados`}</p>}
+      {dialogo}
     </section>
   );
 }

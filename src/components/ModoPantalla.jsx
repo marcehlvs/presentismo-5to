@@ -100,7 +100,7 @@ export default function ModoPantalla() {
             })}
           </ol>
           <p className="mt-[1.2vh] shrink-0 text-[clamp(0.7rem,0.95vw,0.95rem)] text-acero/60">
-            Puntos acumulados desde el inicio. El ganador de la semana se define por puntos por jornada común.
+            Puntos acumulados desde el inicio (incluyen bonos). El ganador de la semana se define por el promedio de puntos por jornada, sin bonos.
           </p>
         </section>
 

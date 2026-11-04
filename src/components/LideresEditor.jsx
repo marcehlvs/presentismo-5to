@@ -5,6 +5,7 @@ import { TOTAL_CURSO, TURNOS } from '../data/mockData';
 import { DIAS_CLASE, validarLideres } from '../lib/lideres';
 import { etiquetaDia, hoyISO, lunesDe, sumarDias } from '../lib/semanas';
 import { btn, campo } from './estilos';
+import { useConfirmar } from './Confirmar';
 
 const proximoLunes = () => sumarDias(lunesDe(hoyISO()), 7);
 const paraFormulario = (alumnos) => alumnos.map(({ id, nombre, dia, turno, avatar, numero }) => ({ id, nombre, dia, turno, avatar, numero }));
@@ -13,6 +14,7 @@ const nombreEquipo = (turno) => TURNOS.find((t) => t.id === turno)?.nombre ?? tu
 // Cambio de líderes sin tocar el código: se elige desde qué fecha rige y el historial conserva los nombres de cada fecha
 export default function LideresEditor() {
   const { alumnosEn, versionesLideres, guardarLideres, quitarVersionLideres } = usePlant();
+  const [confirmar, dialogo] = useConfirmar();
   const [desde, setDesde] = useState(proximoLunes);
   const [items, setItems] = useState(() => paraFormulario(alumnosEn(desde)));
   const [estado, setEstado] = useState('');
@@ -31,7 +33,7 @@ export default function LideresEditor() {
     setEstado((await guardarLideres(desde, items)) ? 'ok' : '');
   };
   const quitar = async (v) => {
-    if (window.confirm(`¿Quitar el cambio de líderes que rige desde el ${etiquetaDia(v.desde)}?`)) await quitarVersionLideres(v.desde);
+    if (await confirmar(`¿Quitar el cambio de líderes que rige desde el ${etiquetaDia(v.desde)}?`, { aceptar: 'Quitar', peligro: true })) await quitarVersionLideres(v.desde);
   };
 
   const cambios = [...versionesLideres].sort((a, b) => b.desde.localeCompare(a.desde));
@@ -98,6 +100,7 @@ export default function LideresEditor() {
           ))}
         </ul>
       )}
+      {dialogo}
     </section>
   );
 }

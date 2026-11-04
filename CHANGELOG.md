@@ -1,8 +1,22 @@
 # Historial de versiones — Operación: Jefe de Planta
 
-Aplicación desarrollada por **Juan Marcelo Bejarano**. La versión actual es la **1.6.2** (3 de noviembre de 2026).
+Aplicación desarrollada por **Juan Marcelo Bejarano**. La versión actual es la **1.7.0** (3 de noviembre de 2026).
 
 Cada versión indica qué cambió para los docentes y si hubo que publicar las reglas de Firestore (`firebase deploy --only firestore:rules`; siempre antes que la app).
+
+## [1.7.0] — 3/11/2026
+**Para los docentes — nuevo modelo de puntos (rige desde el miércoles 4/11/2026)**
+- **Puntos claros por día:** abrir la planta 10, desafío 15, cerrar la planta 10 (35 por jornada). Los alumnos ven la tarjeta *Puntos de hoy* con lo que suman en cada momento.
+- **Ed. Física con sorteo y rotación:** los días de Ed. Física, en la solapa *Hoy* hay un sorteo entre los cinco líderes. El equipo sorteado hace el checklist de Ed. Física (+10) y no repite hasta que salieron los cinco. Se puede cambiar a mano o deshacer. Los demás equipos ven quién la hace y pueden sumar con tareas extra. Ed. Física solo ve y aprueba al equipo sorteado.
+- **Tareas extra opcionales:** +5 cada una, hasta 3 por día. No frenan el premio del checklist. Sirven para compensar los días en que el equipo no hace Ed. Física.
+- **Promedio sin normalizar:** el ganador de la semana sale de puntos de las jornadas ÷ jornadas (la Ed. Física sorteada y las extras suman de verdad). Una jornada vacía (sin nada marcado) ya no cuenta como jornada.
+- **Bonos:** los elige el docente (ahora los botones sugeridos muestran qué equipos califican). Suman a la tabla acumulada pero **no** al promedio que decide el ganador.
+- La semana en curso dice *Va ganando* (en vez de *Ganó*) hasta que termina.
+- **Registro de movimientos:** cada cambio del contador de puntos queda anotado (equipo, cantidad, motivo, jornada y quién). Se ve en *Puntos > Últimos movimientos*; sirve para rastrear descuadres.
+- Los avisos de confirmación ya no son los del navegador: son cuadros propios de la app.
+- Panel docente más compacto en computadora (80 % de tamaño): se ve completo con el zoom del navegador en 100 %, sin agrandar las columnas.
+
+**Técnico:** nuevas colecciones `edfisica_sorteos` y `movimientos` en `firestore.rules`. **Hay que publicar las reglas antes que la app.** Las fechas anteriores al 4/11 se calculan con el modelo viejo (`MODELO_NUEVO_DESDE`). Pruebas nuevas para el sorteo, las extras y los bonos sugeridos; las pruebas de reglas del emulador están escritas pero no se pudieron correr en este entorno (`npm run test:rules`).
 
 ## [1.6.2] — 3/11/2026
 **Para los docentes**

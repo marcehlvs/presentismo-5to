@@ -3,6 +3,7 @@ import { usePlant } from '../context/PlantContext';
 import { DIAS_CLASE } from '../lib/lideres';
 import { diasEdFisicaEn, etiquetaDia, hoyISO, lunesDe, sumarDias, validarDiasEdFisica, versionesEdFisica } from '../lib/semanas';
 import { btn, campo } from './estilos';
+import { useConfirmar } from './Confirmar';
 
 const proximoLunes = () => sumarDias(lunesDe(hoyISO()), 7);
 const nombres = (dias) => (dias.length === 0 ? 'ningún día' : dias.map((d) => DIAS_CLASE[d - 1]).join(', '));
@@ -10,6 +11,7 @@ const nombres = (dias) => (dias.length === 0 ? 'ningún día' : dias.map((d) => 
 // Qué días de la semana hay Ed. Física, sin tocar el código: el cambio rige desde la fecha elegida y lo anterior no se modifica
 export default function DiasEdFisicaEditor() {
   const { versionesEF, guardarDiasEdFisica, quitarVersionEdFisica } = usePlant();
+  const [confirmar, dialogo] = useConfirmar();
   const [desde, setDesde] = useState(proximoLunes);
   const [dias, setDias] = useState(() => diasEdFisicaEn(versionesEF, proximoLunes()));
   const [estado, setEstado] = useState('');
@@ -30,7 +32,7 @@ export default function DiasEdFisicaEditor() {
     setEstado((await guardarDiasEdFisica(desde, dias)) ? 'ok' : '');
   };
   const quitar = async (v) => {
-    if (window.confirm(`¿Quitar el cambio de días de Ed. Física que rige desde el ${etiquetaDia(v.desde)}?`)) await quitarVersionEdFisica(v.desde);
+    if (await confirmar(`¿Quitar el cambio de días de Ed. Física que rige desde el ${etiquetaDia(v.desde)}?`, { aceptar: 'Quitar', peligro: true })) await quitarVersionEdFisica(v.desde);
   };
 
   const cambios = [...versionesEdFisica(versionesEF)].reverse();
@@ -85,6 +87,7 @@ export default function DiasEdFisicaEditor() {
           </li>
         ))}
       </ul>
+      {dialogo}
     </section>
   );
 }

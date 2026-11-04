@@ -8,6 +8,12 @@ export const PUNTOS_DESAFIO = 15;
 // el docente los cambia con fecha de vigencia desde "Días especiales") y los que marque a mano; un día se puede quitar
 // (lluvia, feriado, profe ausente) desde "Días especiales".
 export const PUNTOS_EDFISICA = 10;
+// Tareas extra: son opcionales y no frenan el premio de ningún bloque. Cada una aprobada suma PUNTOS_EXTRA, hasta MAX_EXTRAS_DIA por jornada.
+export const PUNTOS_EXTRA = 5;
+export const MAX_EXTRAS_DIA = 3;
+// Desde esta fecha rige el modelo nuevo: la Ed. Física la hace el líder sorteado (no el líder del día) y las tareas extra son opcionales.
+// Las jornadas anteriores se leen como antes, así los puntos ya sumados no cambian.
+export const MODELO_NUEVO_DESDE = '2026-11-04';
 // Largo máximo del texto de una tarea extra (antes 60: cortaba las preguntas)
 export const TAREA_EXTRA_MAX = 200;
 export const DIAS_EDFISICA_AUTO = [1, 5]; // 1 = lunes … 5 = viernes: lunes y viernes (valor inicial; después se cambia desde el panel)
@@ -18,14 +24,15 @@ export const PUNTOS_JORNADA = PUNTOS_CHECKLIST + PUNTOS_CIERRE + PUNTOS_DESAFIO;
 
 // Bonos: atajos del formulario del docente (después de tocarlos, los valores se pueden cambiar antes de guardar)
 export const BONOS_SUGERIDOS = [
-  { motivo: 'Semana perfecta', puntos: 20 },
-  { motivo: 'Cero llegadas tarde', puntos: 10 },
+  { id: 'semana-perfecta', motivo: 'Semana perfecta', puntos: 20 },
+  { id: 'cero-tardes', motivo: 'Cero llegadas tarde', puntos: 10 },
 ];
 export const BONO_MAXIMO = 100;
 
 // 'promedio': gana el equipo con más puntos por jornada (justo si algún equipo tuvo menos días, por ejemplo por un feriado).
 // 'total': gana el equipo con más puntos en la semana.
-// En ambos casos los bonos suman puntos y los días sin clase no cuentan como jornada.
+// En ambos casos los bonos NO cuentan para el ganador (suman a la tabla de posiciones, pero no al promedio) y los días sin clase
+// no cuentan como jornada.
 export const CRITERIO_GANADOR = 'promedio';
 
 const pad = (n) => String(n).padStart(2, '0');
@@ -58,40 +65,62 @@ export function etiquetaDia(iso) {
   return `${['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb'][d.getDay()]} ${pad(d.getDate())}/${pad(d.getMonth() + 1)}`;
 }
 
-export const puntosDeJornada = (j) =>
-  (j.premioChecklist ? PUNTOS_CHECKLIST : 0) + (j.premioCierre ? PUNTOS_CIERRE : 0) + (j.desafioAprobado ? PUNTOS_DESAFIO : 0)
-  + (j.premioEdFisica ? PUNTOS_EDFISICA : 0);
+// Cuántas tareas extra de la jornada ya sumaron puntos (nunca más que el tope diario)
+export const extrasPagas = (j) => Math.min(Object.values(j?.premiosExtra ?? {}).filter(Boolean).length, MAX_EXTRAS_DIA);
 
-export const maximoDeJornada = (conEdFisica) => PUNTOS_JORNADA + (conEdFisica ? PUNTOS_EDFISICA : 0);
+// Los puntos de una jornada, separados por momento del día: abrir la planta, desafío, cerrar la planta, Ed. Física y extras
+export function puntosDetalleJornada(j) {
+  const apertura = j?.premioChecklist ? PUNTOS_CHECKLIST : 0;
+  const desafio = j?.desafioAprobado ? PUNTOS_DESAFIO : 0;
+  const cierre = j?.premioCierre ? PUNTOS_CIERRE : 0;
+  const edFisica = j?.premioEdFisica ? PUNTOS_EDFISICA : 0;
+  const extras = extrasPagas(j) * PUNTOS_EXTRA;
+  return { apertura, desafio, cierre, edFisica, extras, total: apertura + desafio + cierre + edFisica + extras };
+}
+
+export const puntosDeJornada = (j) => puntosDetalleJornada(j).total;
+
+// Lo máximo que puede sumar una jornada: lo común (35) + Ed. Física si le toca + las extra que haya (hasta el tope)
+export const maximoDeJornada = ({ edFisica = false, extras = 0 } = {}) =>
+  PUNTOS_JORNADA + (edFisica ? PUNTOS_EDFISICA : 0) + Math.min(extras, MAX_EXTRAS_DIA) * PUNTOS_EXTRA;
+
+// ¿La jornada tiene actividad del día común (checklist, desafío, asistencia, cierre o extras)? Un documento vacío, o con solo cosas de
+// Ed. Física, no cuenta como jornada: así una pantalla abierta por error no le baja el promedio a un equipo.
+export function tieneActividadComun(j) {
+  const marcada = (mapa) => Object.entries(mapa ?? {}).some(([id, v]) => v === true && !id.startsWith('ef_'));
+  return marcada(j?.declaradas) || marcada(j?.aprobadas)
+    || !!j?.premioChecklist || !!j?.premioCierre || !!j?.desafioAprobado
+    || j?.respuesta != null || j?.asistencia != null
+    || extrasPagas(j) > 0;
+}
 
 // Puntos, bonos, jornadas y promedio por equipo para un conjunto de jornadas; determina el ganador.
 // diasSinClase (Set de fechas): sus jornadas no cuentan, así el feriado no baja el promedio de nadie.
-// diasEdFisica (Set de fechas): ese día se puede sumar PUNTOS_EDFISICA más. Para que el equipo al que le toca Ed. Física no tenga
-// ventaja, el promedio se calcula sobre los puntos posibles: es "puntos por jornada común" (hasta PUNTOS_JORNADA).
-// Sin días de Ed. Física, da exactamente puntos / jornadas.
-export function resumenTurnos(jornadas, { bonos = [], diasSinClase, diasEdFisica } = {}) {
-  const r = Object.fromEntries(TURNOS.map((t) => [t.id, { ...t, puntos: 0, bonos: 0, jornadas: 0, posibles: 0 }]));
+// `puntos` es el total del equipo (jornadas + bonos, lo mismo que suma la tabla de posiciones). El promedio es por jornada y SIN bonos:
+// puntos de las jornadas (abrir, desafío, cerrar, Ed. Física y extras) dividido la cantidad de jornadas con actividad del día común.
+// Los puntos de Ed. Física de un equipo que no tuvo ese día como jornada propia suman, pero no cuentan como una jornada más.
+export function resumenTurnos(jornadas, { bonos = [], diasSinClase } = {}) {
+  const r = Object.fromEntries(TURNOS.map((t) => [t.id, { ...t, puntos: 0, bonos: 0, jornadas: 0 }]));
   for (const j of jornadas) {
     if (diasSinClase?.has(j.fecha)) continue;
     const turno = ALUMNOS.find((a) => a.id === j.jefeId)?.turno;
     if (!r[turno]) continue;
     r[turno].puntos += puntosDeJornada(j);
-    r[turno].jornadas += 1;
-    r[turno].posibles += maximoDeJornada(diasEdFisica?.has(j.fecha));
+    if (tieneActividadComun(j)) r[turno].jornadas += 1;
   }
   for (const b of bonos) {
     if (!r[b.turnoId]) continue;
     r[b.turnoId].puntos += b.puntos;
     r[b.turnoId].bonos += b.puntos;
   }
-  // Un equipo sin ninguna jornada en la semana (por ejemplo, su día fue feriado y no lo recuperó) no compite por el premio:
-  // con solo un bono, su "promedio" sería puntos crudos y le ganaría a equipos que sí trabajaron. Sus bonos igual suman en `puntos`.
+  // Un equipo sin ninguna jornada en la semana (por ejemplo, su día fue feriado y no lo recuperó) no compite por el premio.
+  // Sus puntos de Ed. Física o sus bonos igual suman en `puntos`.
   const lista = Object.values(r).map((t) => ({
     ...t,
     compite: t.jornadas > 0,
-    promedio: t.jornadas === 0 ? 0 : (t.puntos / t.posibles) * PUNTOS_JORNADA,
+    promedio: t.jornadas === 0 ? 0 : (t.puntos - t.bonos) / t.jornadas,
   }));
-  const clave = (t) => (CRITERIO_GANADOR === 'total' ? t.puntos : t.promedio);
+  const clave = (t) => (CRITERIO_GANADOR === 'total' ? t.puntos - t.bonos : t.promedio);
   // Los que compiten van primero, ordenados por el criterio; los que no, al final
   lista.sort((a, b) => (b.compite - a.compite) || (clave(b) - clave(a)));
   const mejor = lista[0].compite ? clave(lista[0]) : 0;
@@ -103,14 +132,36 @@ export function resumenTurnos(jornadas, { bonos = [], diasSinClase, diasEdFisica
   };
 }
 
+// Equipos que cumplen el criterio de cada bono sugerido en esas jornadas (las de una semana), para que el docente decida:
+//  semana-perfecta: todas sus jornadas con actividad tienen abrir la planta, desafío y cerrar la planta completos (y al menos una jornada)
+//  cero-tardes: declaró asistencia al menos una vez y ninguna llegada tarde
+// Devuelve { 'semana-perfecta': ['e1', ...], 'cero-tardes': [...] }. Es una ayuda: el bono lo elige y lo carga el docente.
+export function equiposCalificados(jornadas, diasSinClase) {
+  const por = Object.fromEntries(TURNOS.map((t) => [t.id, []]));
+  for (const j of jornadas) {
+    if (diasSinClase?.has(j.fecha)) continue;
+    const turno = ALUMNOS.find((a) => a.id === j.jefeId)?.turno;
+    if (por[turno]) por[turno].push(j);
+  }
+  const perfecta = [];
+  const ceroTardes = [];
+  for (const [id, js] of Object.entries(por)) {
+    const activas = js.filter(tieneActividadComun);
+    if (activas.length > 0 && activas.every((j) => j.premioChecklist && j.premioCierre && j.desafioAprobado)) perfecta.push(id);
+    const conAsistencia = js.filter((j) => j.asistencia);
+    if (conAsistencia.length > 0 && conAsistencia.every((j) => j.asistencia.tardes === 0)) ceroTardes.push(id);
+  }
+  return { 'semana-perfecta': perfecta, 'cero-tardes': ceroTardes };
+}
+
 // Un resumen por cada semana que tenga jornadas o bonos, de la más vieja a la más nueva
-export function resumenPorSemana(jornadas, bonos, diasSinClase, diasEdFisica) {
+export function resumenPorSemana(jornadas, bonos, diasSinClase) {
   const lunes = [...new Set([...jornadas.map((j) => lunesDe(j.fecha)), ...bonos.map((b) => lunesDe(b.fecha))])].sort();
   return lunes.map((l) => ({
     lunes: l,
     ...resumenTurnos(
       jornadas.filter((j) => lunesDe(j.fecha) === l),
-      { bonos: bonos.filter((b) => lunesDe(b.fecha) === l), diasSinClase, diasEdFisica }
+      { bonos: bonos.filter((b) => lunesDe(b.fecha) === l), diasSinClase }
     ),
   }));
 }
