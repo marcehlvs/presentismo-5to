@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { ALUMNOS, TOTAL_CURSO } from '../data/mockData';
 import { alumnosEn, validarLideres } from './lideres';
-import { avisosFijos, integrantes, parsearNumeros, repeticiones, sortearGrupos, textoGrupo, validarGrupos } from './grupos';
+import { avisosFijos, estadoDelSorteo, integrantes, manualesVigentes, parsearNumeros, repeticiones, sortearGrupos, textoGrupo, validarGrupos } from './grupos';
 
 // Generador con semilla para que las pruebas sean repetibles
 const semilla = (s) => () => { s |= 0; s = (s + 0x6d2b79f5) | 0; let t = Math.imul(s ^ (s >>> 15), 1 | s); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
@@ -161,5 +161,36 @@ describe('validarGrupos, integrantes y textoGrupo', () => {
     expect(textoGrupo(t, 1)).toBe('10 (líder) · 3 · 8 · 12');
     expect(textoGrupo(t, 2)).toBe('');
     expect(textoGrupo(null, 1)).toBe('');
+  });
+});
+
+describe('líderes que cambian después del sorteo', () => {
+  const lideresViejos = [{ id: 1, numero: 10 }, { id: 2, numero: 6 }, { id: 3, numero: 8 }, { id: 4, numero: 16 }, { id: 5, numero: 22 }];
+  const sorteo = sortearGrupos({ lideres: lideresViejos, total: 25 });
+
+  it('con los mismos líderes el sorteo vale', () => {
+    expect(estadoDelSorteo(sorteo, lideresViejos, { total: 25 }).vigente).toBe(true);
+  });
+
+  it('si cambia un líder, el sorteo guardado deja de valer (no se muestran grupos con alumnos repetidos)', () => {
+    const nuevos = lideresViejos.map((l) => (l.id === 3 ? { ...l, numero: sorteo.grupos['1'][0] } : l));
+    const r = estadoDelSorteo(sorteo, nuevos, { total: 25 });
+    expect(r.vigente).toBe(false);
+    expect(r.motivo).toMatch(/líderes cambiaron/);
+  });
+
+  it('volver a sortear con los líderes nuevos deja a todos en un solo grupo', () => {
+    const nuevos = lideresViejos.map((l) => (l.id === 3 ? { ...l, numero: sorteo.grupos['1'][0] } : l));
+    const otro = sortearGrupos({ lideres: nuevos, total: 25 });
+    expect(validarGrupos(otro, { total: 25 })).toBe('');
+    expect(estadoDelSorteo(otro, nuevos, { total: 25 }).vigente).toBe(true);
+  });
+
+  it('de los grupos a mano solo quedan los que no se ven afectados', () => {
+    const conManuales = { ...sorteo, manuales: [1, 2], grupos: { ...sorteo.grupos, 1: [1, 2, 3, 4], 2: [5, 7, 9, 11] } };
+    const nuevos = lideresViejos.map((l) => (l.id === 2 ? { ...l, numero: 7 } : l)); // el líder 2 ahora es el n.º 7
+    expect(Object.keys(manualesVigentes(conManuales, nuevos))).toEqual(['1']);
+    const nuevosB = lideresViejos.map((l) => (l.id === 3 ? { ...l, numero: 4 } : l)); // el 4 era compañero en el grupo 1
+    expect(Object.keys(manualesVigentes(conManuales, nuevosB))).toEqual(['2']);
   });
 });

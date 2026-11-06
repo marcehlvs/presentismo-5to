@@ -1,8 +1,15 @@
 # Historial de versiones — Operación: Jefe de Planta
 
-Aplicación desarrollada por **Juan Marcelo Bejarano**. La versión actual es la **1.7.0** (3 de noviembre de 2026).
+Aplicación desarrollada por **Juan Marcelo Bejarano**. La versión actual es la **1.7.1** (3 de noviembre de 2026).
 
 Cada versión indica qué cambió para los docentes y si hubo que publicar las reglas de Firestore (`firebase deploy --only firestore:rules`; siempre antes que la app).
+
+## [1.7.1] — 6/11/2026
+**Para los docentes**
+- **Grupos y cambio de líderes:** *Grupos de la semana* ahora usa los líderes vigentes hoy (antes usaba los del lunes, así que un cambio hecho a mitad de semana no se veía). Si los líderes cambian después del sorteo, la app avisa que los grupos guardados ya no corresponden y **deja de mostrárselos a los alumnos** (antes podían verse alumnos repetidos). *Sortear los que faltan* conserva solo lo definido a mano que todavía sirve y reparte el resto.
+- **Volver a sortear TODO (incluso lo definido a mano):** botón nuevo que descarta también los grupos escritos a mano. El anterior pasa a decir "conserva lo definido a mano".
+
+**Técnico:** sin cambios en las reglas. Pruebas nuevas para el cambio de líderes.
 
 ## [1.7.0] — 3/11/2026
 **Para los docentes — nuevo modelo de puntos (rige desde el miércoles 4/11/2026)**

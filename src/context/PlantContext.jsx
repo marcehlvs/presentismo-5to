@@ -9,7 +9,7 @@ import { ALUMNOS, TURNOS, TAREAS, TAREAS_EDFISICA, PUNTAJES_INICIALES, getJornad
 import {
   BONO_MAXIMO, MODELO_NUEVO_DESDE, PUNTOS_EXTRA, MAX_EXTRAS_DIA, aplicarFeriados, PUNTOS_CHECKLIST, PUNTOS_CIERRE, PUNTOS_DESAFIO, PUNTOS_EDFISICA, TAREA_EXTRA_MAX, conVersionEdFisica, crearDiasEdFisica, deIso, diasEdFisicaEn, sinVersionEdFisica, validarDiasEdFisica, hoyISO, lunesDe, resumenTurnos, sumarDias,
 } from '../lib/semanas';
-import { sortearGrupos, validarGrupos } from '../lib/grupos';
+import { estadoDelSorteo, manualesVigentes, sortearGrupos, validarGrupos } from '../lib/grupos';
 import { alumnosEn, conVersion, sinVersion, validarLideres } from '../lib/lideres';
 import { premioExtra, premiosTrasAprobacion } from '../lib/premios';
 import { quedanPorSalir, sortearEdFisica as elegirAlAzar } from '../lib/sorteoEdFisica';
@@ -235,6 +235,9 @@ export function PlantProvider({ children }) {
   const alumnos = useMemo(() => alumnosEn(versionesLideres, fecha), [versionesLideres, fecha]);
   const alumnosDe = useMemo(() => (f) => alumnosEn(versionesLideres, f), [versionesLideres]);
   const jefe = alumnos.find((a) => a.id === jefeId) ?? null;
+  // Grupos para mostrar a los alumnos: solo si siguen valiendo con los líderes de hoy (si no, mejor ocultarlos que mostrar alumnos repetidos)
+  const estadoGrupos = useMemo(() => estadoDelSorteo(gruposSemana, alumnos.map((a) => ({ id: a.id, numero: a.numero }))), [gruposSemana, alumnos]);
+  const gruposVisibles = estadoGrupos.vigente ? gruposSemana : null;
   const actual = jornadasHoy.find((j) => j.jefeId === jefeId) ?? {};
   const hechas = actual.declaradas ?? {};
   const aprobadas = actual.aprobadas ?? {};
@@ -497,12 +500,14 @@ export function PlantProvider({ children }) {
   // Cada cambio queda registrado (fecha, hora y cantidad de cambios).
   const guardarGruposSemana = async ({ modo, manuales = {} }) => {
     try {
-      const lideres = alumnosDe(semana).map((a) => ({ id: a.id, numero: a.numero }));
+      // Los líderes de hoy (si cambiaron en la semana, el sorteo anterior ya no vale y hay que volver a sortear)
+      const lideres = alumnosDe(fecha).map((a) => ({ id: a.id, numero: a.numero }));
       const previos = gruposDocs.filter((g) => g.semana < semana).sort((a, b) => a.semana.localeCompare(b.semana)).slice(-4);
       const actual = gruposSemana;
-      const idsManuales = new Set([...(actual?.manuales ?? []).map(String), ...Object.keys(manuales)]);
-      const aMano = Object.fromEntries([...idsManuales].filter((id) => Array.isArray(manuales[id] ?? actual?.grupos?.[id])).map((id) => [id, manuales[id] ?? actual.grupos[id]]));
-      const fijos = modo === 'faltantes' ? { ...(actual?.grupos ?? {}), ...manuales } : aMano;
+      // Grupos a mano que siguen valiendo con los líderes actuales; 'todoTotal' los descarta también (solo queda lo escrito ahora)
+      const aMano = modo === 'todoTotal' ? { ...manuales } : { ...manualesVigentes(actual, lideres), ...manuales };
+      const vigente = estadoDelSorteo(actual, lideres).vigente;
+      const fijos = modo === 'faltantes' && vigente ? { ...(actual?.grupos ?? {}), ...manuales } : aMano;
       const sorteo = sortearGrupos({ lideres, fijos, previos, soloFijos: modo === 'manuales' });
       const motivo = validarGrupos(sorteo, { completo: Object.keys(sorteo.grupos).length === lideres.length });
       if (motivo) throw new Error(motivo);
@@ -711,7 +716,7 @@ export function PlantProvider({ children }) {
     semana, resumenSemana, premioSemana, historial, premios, publicarPremio, reiniciarPuntos,
     diaHoy, hoySinClase, suplentesHoy, jornadasSemana, bonosSemana, diasTodos, bonosTodos, sinClaseTodos, edFisicaTodos,
     sinClaseDe,
-    gruposDocs, gruposSemana, guardarGruposSemana,
+    gruposDocs, gruposSemana, gruposVisibles, estadoGrupos, guardarGruposSemana,
     pinesRequeridos, pinesDocente, guardarPin, quitarPin,
     puntajes, corregirPuntos, versionesEF, diasEdFisicaHoy: diasEdFisicaEn(versionesEF, fecha), guardarDiasEdFisica, quitarVersionEdFisica,
     designarSuplente, marcarSinClase, marcarEdFisica, programarEdFisica, cargarBono, quitarBono,

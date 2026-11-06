@@ -3,7 +3,7 @@ import { usePlant } from '../context/PlantContext';
 import { textoGrupo } from '../lib/grupos';
 
 export default function Leaderboard() {
-  const { ranking, jefe, alumnos, gruposSemana } = usePlant();
+  const { ranking, jefe, alumnos, gruposVisibles: gruposSemana } = usePlant();
   const maximo = ranking[0]?.puntos || 1;
 
   return (

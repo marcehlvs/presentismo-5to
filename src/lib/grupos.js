@@ -145,3 +145,32 @@ export function avisosFijos(lideres, fijos) {
   }
   return avisos;
 }
+
+// ¿Los grupos guardados siguen valiendo con los líderes de hoy? Cuando cambian los líderes después del sorteo, el sorteo guardado
+// tiene los números de lista viejos: el líder nuevo puede figurar como compañero de otro y el viejo seguir como líder.
+// lideres: [{ id, numero }] (los vigentes). Devuelve { vigente, motivo }.
+export function estadoDelSorteo(sorteo, lideres, { total = TOTAL_CURSO } = {}) {
+  if (!sorteo) return { vigente: true, motivo: '' };
+  const guardados = sorteo.lideres ?? {};
+  const cambiaron = lideres.filter((l) => guardados[String(l.id)] !== l.numero);
+  if (cambiaron.length > 0) return { vigente: false, motivo: 'Los líderes cambiaron después del sorteo: estos grupos ya no corresponden.' };
+  const mapa = Object.fromEntries(lideres.map((l) => [String(l.id), l.numero]));
+  const motivo = validarGrupos({ lideres: mapa, grupos: sorteo.grupos }, { total, completo: false });
+  return motivo ? { vigente: false, motivo: `Los grupos guardados tienen un error: ${motivo}` } : { vigente: true, motivo: '' };
+}
+
+// De los grupos definidos a mano, los que todavía valen con los líderes actuales: el líder de ese grupo no cambió
+// y ninguno de sus compañeros es hoy líder. Los demás se descartan (hay que volver a definirlos o sortearlos).
+export function manualesVigentes(sorteo, lideres) {
+  const guardados = sorteo?.lideres ?? {};
+  const numerosLideres = new Set(lideres.map((l) => l.numero));
+  const salida = {};
+  for (const id of (sorteo?.manuales ?? []).map(String)) {
+    const l = lideres.find((x) => String(x.id) === id);
+    const miembros = sorteo.grupos?.[id];
+    if (!l || guardados[id] !== l.numero || !Array.isArray(miembros)) continue;
+    if (miembros.some((n) => numerosLideres.has(n))) continue;
+    salida[id] = miembros;
+  }
+  return salida;
+}

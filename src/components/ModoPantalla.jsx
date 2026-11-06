@@ -39,7 +39,7 @@ const MEDALLA = ['bg-seguridad text-acero', 'bg-hormigon text-acero', 'bg-[#c98a
 
 // Vista para la pantalla interactiva del aula: ranking y premio en grande. Se actualiza sola (Firestore en tiempo real).
 export default function ModoPantalla() {
-  const { ranking, semana, premioSemana, resumenSemana, bonosSemana, fecha, jornada, alumnos, hoyEdFisica, gruposSemana } = usePlant();
+  const { ranking, semana, premioSemana, resumenSemana, bonosSemana, fecha, jornada, alumnos, hoyEdFisica, gruposVisibles: gruposSemana } = usePlant();
   const conectado = useConectado();
   useMantenerEncendida();
   const maximo = ranking[0]?.puntos || 1;

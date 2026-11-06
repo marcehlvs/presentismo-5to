@@ -10,11 +10,11 @@ import Avatar from './Avatar';
 // Grupos de la semana: se pueden definir a mano (por ejemplo, grupos ya sorteados en clase) y sortear los que faltan.
 // Cada líder tiene su número de lista; los compañeros se escriben por número de lista (no se guardan nombres).
 export default function GruposSemana() {
-  const { alumnosEn, semana, gruposSemana, guardarGruposSemana } = usePlant();
+  const { alumnosEn, fecha, semana, gruposSemana, estadoGrupos, guardarGruposSemana } = usePlant();
   const [confirmar, dialogo] = useConfirmar();
   const [textos, setTextos] = useState({});
   const [estado, setEstado] = useState('');
-  const lideres = alumnosEn(semana);
+  const lideres = alumnosEn(fecha); // los líderes de hoy
   const veces = gruposSemana?.intentos ?? 0;
   const manuales = (gruposSemana?.manuales ?? []).map(String);
   const cuando = gruposSemana?.creado?.toDate?.().toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short' });
@@ -62,7 +62,7 @@ export default function GruposSemana() {
                 <div className="min-w-0 flex-1">
                   <p className="font-semibold">{equipoDe(l)?.nombre} · {l.dia} · {l.nombre} (n.º {l.numero})</p>
                   <p className="text-sm tabular-nums">
-                    {tiene ? <>Grupo: {textoGrupo(gruposSemana, l.id)}{manuales.includes(String(l.id)) ? ' · definido a mano' : ' · sorteado'}</> : <span className="text-acero/60">Sin grupo todavía</span>}
+                    {tiene && !estadoGrupos.vigente ? <span className="text-alarma font-semibold">Grupo desactualizado: volvé a sortear</span> : tiene ? <>Grupo: {textoGrupo(gruposSemana, l.id)}{manuales.includes(String(l.id)) ? ' · definido a mano' : ' · sorteado'}</> : <span className="text-acero/60">Sin grupo todavía</span>}
                   </p>
                 </div>
               </div>
@@ -79,6 +79,11 @@ export default function GruposSemana() {
         })}
       </ul>
 
+      {!estadoGrupos.vigente && (
+        <p role="alert" className="mb-3 rounded-md border-2 border-alarma bg-alarma/10 p-3 text-sm font-semibold text-alarma">
+          {estadoGrupos.motivo} Los alumnos no ven estos grupos hasta que vuelvas a sortear. «Sortear los que faltan» conserva solo lo definido a mano que todavía sirve y reparte el resto; «Volver a sortear TODO» empieza de cero.
+        </p>
+      )}
       {analisis.avisos.map((a) => <p key={a} role="status" className="mb-2 text-sm font-semibold text-alarma">⚠ {a}</p>)}
 
       <div className="flex flex-wrap items-center gap-3">
@@ -86,8 +91,12 @@ export default function GruposSemana() {
           disabled={!hayManuales || hayErrores || estado === 'guardando'} className={`${btn} bg-acero text-seguridad`}>Guardar lo definido a mano</button>
         <button onClick={() => ejecutar('faltantes', '')} disabled={hayErrores || estado === 'guardando'} className={btn}>Sortear los que faltan</button>
         {veces > 0 && (
+          <button onClick={() => ejecutar('todoTotal', 'Se sortea TODO de nuevo, incluso los grupos definidos a mano (se pierden). Todos van a ver que se sorteó de nuevo. ¿Seguir?')}
+            disabled={hayErrores || estado === 'guardando'} className="underline text-alarma text-sm font-semibold">Volver a sortear TODO (incluso lo definido a mano)</button>
+        )}
+        {veces > 0 && (
           <button onClick={() => ejecutar('todo', `Ya hay grupos esta semana (${veces === 1 ? '1 cambio registrado' : `${veces} cambios registrados`}). ¿Volver a sortear todo, menos lo definido a mano? Todos van a ver que se sorteó de nuevo.`)}
-            disabled={hayErrores || estado === 'guardando'} className="underline text-alarma text-sm">Volver a sortear todo</button>
+            disabled={hayErrores || estado === 'guardando'} className="underline text-alarma text-sm">Volver a sortear (conserva lo definido a mano)</button>
         )}
         {estado === 'ok' && <span role="status" className="text-operativa font-semibold">Guardado ✓</span>}
       </div>
